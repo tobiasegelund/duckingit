@@ -2,6 +2,8 @@
 import os
 from dataclasses import dataclass, asdict
 
+import duckdb
+
 
 @dataclass(frozen=True)
 class AWSCredentials:
@@ -33,3 +35,8 @@ update {aws_access_key_name}, {aws_secret_key_name} and {aws_default_region_name
         aws_secret_access_key=secret_key,
         aws_default_region=default_region,
     )
+
+
+def install_httpfs():
+    db = duckdb.connect()
+    db.execute("INSTALL httpfs;")

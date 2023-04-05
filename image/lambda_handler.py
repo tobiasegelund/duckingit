@@ -20,7 +20,13 @@ def lambda_handler(event, context):
     # """
     # )
 
-    con.sql(f"SELECT * FROM parquet_scan('s3://{BUCKET_NAME}/*.parquet')").show()
-    con.sql(
+    # con.sql(f"SELECT * FROM parquet_scan('s3://{BUCKET_NAME}/*.parquet')").show()
+    data = con.sql(
         "SELECT COUNT(*), filename FROM read_parquet(['s3://s3-duckdb-tobiasegelund/2023/02/test2.parquet'], filename=true) GROUP BY filename"
     )
+
+    return {
+        "columns": data.columns,
+        "dtypes": data.dtypes,
+        "data": data.fetchall(),
+    }

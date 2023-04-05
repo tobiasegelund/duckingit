@@ -1,6 +1,6 @@
 import pytest
 
-from swirl._config import load_aws_credentials
+from duckingit._config import load_aws_credentials
 
 
 def test_load_aws_credentials(monkeypatch):

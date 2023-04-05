@@ -9,7 +9,7 @@ RUN mkdir -p /tmp/python /tmp/release /tmp/build
 
 # Install Python dependencies
 RUN pip3 install duckdb
-RUN pip3 install duckdb pyarrow --target /tmp/build/python
+RUN pip3 install duckdb --target /tmp/build/python
 
 # Install HTTPFS
 COPY install.py ${LAMBDA_TASK_ROOT}
