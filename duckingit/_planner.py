@@ -17,13 +17,20 @@ class Planner:
             return [key]
 
         # TODO: Count the number of files / size in each prefix to divide the workload better
+        # TODO: Consider which of 2023/01/* or 2023/01* is most acceptable - a logic that can take both?
         glob_query = f"""
             SELECT DISTINCT
                 CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
             FROM GLOB('{key}')
             """
 
-        prefixes = self.conn.sql(glob_query).fetchall()
+        try:
+            prefixes = self.conn.sql(glob_query).fetchall()
+
+        except RuntimeError:
+            raise ValueError(
+                "Please validate that the FROM statement in the query is correct."
+            )
 
         return self._flatten_list(_list=prefixes)
 
@@ -36,7 +43,7 @@ class Planner:
         scan_statement = next(scan_statements).sql()
 
         # TODO: Update pattern for other filesystems
-        pattern = r"\(.*?(s3://[^/]+/.+(/\*|\.parquet)).*?\)"
+        pattern = r"\(.*?(s3://[^/]+/.+(/\*|\.parquet|\*)).*?\)"
         match = re.search(pattern, scan_statement)
 
         if match is None:

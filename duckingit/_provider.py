@@ -26,6 +26,9 @@ class AWS(Provider):
                 InvocationType="RequestResponse",
             )
             result = json.loads(resp["Payload"].read().decode("utf-8"))
+
+            self._handle_error(resp=result)
+
             output.append(result)
 
         return output
@@ -34,6 +37,11 @@ class AWS(Provider):
         if "errorMessage" in resp.keys():
             # TODO: Create user-defined exception
             raise ValueError(f"{resp.get('errorType')}: {resp.get('errorMessage')}")
+
+
+class MockProvider(Provider):
+    def invoke(self, queries: list[str]) -> list[dict]:
+        pass
 
 
 # from enum import Enum

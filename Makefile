@@ -6,6 +6,9 @@ test-unit:
 test-integration:
 	pytest tests/integration -s
 
+flake8:
+	flake8 duckingit tests --ignore E501
+
 build:
 	cd image/ && docker build . -t duckdb
 
