@@ -48,7 +48,7 @@ class Planner:
         sub = f"read_parquet({list_of_prefixes})"
 
         # TODO: Add read_parquet here as well
-        # TODO: Lower case everything
+        # TODO: Make lowercase
         query_upd = re.sub(r"scan_parquet\([^)]*\)", sub, query)
 
         return query_upd
@@ -65,6 +65,18 @@ class Planner:
 
         # TODO: Remove list here
         return [query_upd]
+
+
+class MockPlanner(Planner):
+    def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
+        self.conn = conn
+
+    def scan_bucket(self, key: str) -> list[str]:
+        return [
+            "s3://<BUCKET_NAME>/2023/01/*",
+            "s3://<BUCKET_NAME>/2023/02/*",
+            "s3://<BUCKET_NAME>/2023/03/*",
+        ]
 
 
 # class Optimizer:

@@ -1,7 +1,7 @@
 import pytest
 
-from duckingit._session import DuckSession
+from duckingit._session import MockDuckSession
 
 
 def test_DuckSession():
-    session = DuckSession()
+    session = MockDuckSession()
