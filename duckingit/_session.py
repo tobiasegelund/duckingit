@@ -39,10 +39,6 @@ class DuckSession:
         return self._metadata
 
     @property
-    def con(self) -> duckdb.DuckDBPyConnection:
-        return self._conn
-
-    @property
     def conn(self) -> duckdb.DuckDBPyConnection:
         return self._conn
 

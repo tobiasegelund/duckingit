@@ -20,7 +20,7 @@ class Planner:
         glob_query = f"""
             SELECT DISTINCT
                 CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
-            FROM GLOB('s3://s3-duckdb-tobiasegelund/2023/*')
+            FROM GLOB('{key}')
             """
 
         prefixes = self.conn.sql(glob_query).fetchall()
