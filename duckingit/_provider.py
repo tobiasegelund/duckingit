@@ -18,7 +18,7 @@ class AWS(Provider):
         # TODO: Rewrite to async
         output = list()
         for query in queries:
-            payload = json.dumps(query)
+            payload = json.dumps({"body": query})
 
             resp = self._client.invoke(
                 FunctionName=self.function_name,
@@ -29,6 +29,11 @@ class AWS(Provider):
             output.append(result)
 
         return output
+
+    def _handle_error(self, resp: dict) -> None:
+        if "errorMessage" in resp.keys():
+            # TODO: Create user-defined exception
+            raise ValueError(f"{resp.get('errorType')}: {resp.get('errorMessage')}")
 
 
 # from enum import Enum

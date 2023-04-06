@@ -1,5 +1,6 @@
 import os
 import re
+import itertools
 
 import boto3
 import duckdb
@@ -7,6 +8,7 @@ from sqlglot import parse_one, exp
 
 
 class Planner:
+    # TODO: Validate that the prefix/file exists else raise Exception
     def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
         self.conn = conn
 
@@ -17,13 +19,16 @@ class Planner:
         # TODO: Count the number of files / size in each prefix to divide the workload better
         glob_query = f"""
             SELECT DISTINCT
-                regexp_replace(file, '/[^/]+$', '') AS prefix
-            FROM glob('{key}')
+                CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
+            FROM GLOB('s3://s3-duckdb-tobiasegelund/2023/*')
             """
 
         prefixes = self.conn.sql(glob_query).fetchall()
 
-        return prefixes
+        return self._flatten_list(_list=prefixes)
+
+    def _flatten_list(self, _list: list) -> list:
+        return list(itertools.chain(*_list))
 
     def find_key(self, query: str) -> str:
         # TODO: Update exceptions to user-defined exceptions

@@ -1,8 +1,4 @@
-"""DuckDB executor"""
-import json
 import duckdb
-
-BUCKET_NAME = "s3-duckdb-tobiasegelund"
 
 
 def lambda_handler(event, context):
@@ -22,8 +18,9 @@ def lambda_handler(event, context):
     # """
     # )
 
-    # con.sql(f"SELECT * FROM parquet_scan('s3://{BUCKET_NAME}/*.parquet')").show()
-    data = con.sql(json.loads(event))
+    payload = event["body"]
+
+    data = con.sql(payload)
 
     return {
         "columns": data.columns,
