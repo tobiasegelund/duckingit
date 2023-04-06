@@ -1,8 +1,6 @@
-import os
 import re
 import itertools
 
-import boto3
 import duckdb
 from sqlglot import parse_one, exp
 
