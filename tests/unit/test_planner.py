@@ -1,6 +1,13 @@
+import duckdb
 import pytest
 
-from duckingit._optimizer import optimize, scan_bucket, find_bucket, update_query
+from duckingit._planner import Planner
+
+
+@pytest.fixture
+def planner():
+    conn = duckdb.connect(":memory:")
+    yield Planner(conn=conn)
 
 
 @pytest.mark.parametrize(
@@ -16,8 +23,8 @@ from duckingit._optimizer import optimize, scan_bucket, find_bucket, update_quer
         ),
     ],
 )
-def test_find_bucket(query, expected):
-    got = find_bucket(query=query)
+def test_find_bucket(query, expected, planner):
+    got = planner.find_bucket(query=query)
 
     assert got == expected
 
@@ -42,7 +49,7 @@ def test_find_bucket(query, expected):
         # ),
     ],
 )
-def test_update_query(query, prefix, expected):
-    got = update_query(query=query, list_of_prefixes=prefix)
+def test_update_query(query, prefix, expected, planner):
+    got = planner.update_query(query=query, list_of_prefixes=prefix)
 
     assert got == expected

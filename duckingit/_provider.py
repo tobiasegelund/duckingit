@@ -1,28 +1,34 @@
+import json
+
 import boto3
 
-from ._config import load_aws_credentials, AWSCredentials
+
+class Provider:
+    def invoke(self, queries: list[str]) -> list[dict]:
+        raise NotImplementedError()
 
 
-class AWS:
+class AWS(Provider):
     def __init__(self, function_name: str) -> None:
         self.function_name = function_name
 
         self._client = boto3.client("lambda")
-        self._credentials: AWSCredentials = load_aws_credentials()
 
-    @property
-    def credentials(self) -> AWSCredentials:
-        return self._credentials
+    def invoke(self, queries: list[str]) -> list[dict]:
+        # TODO: Rewrite to async
+        output = list()
+        for query in queries:
+            payload = query
 
-    def run(self, query: str):
-        payload = query
+            resp = self._client.invoke(
+                FunctionName=self.function_name,
+                Payload=payload,
+                InvocationType="RequestResponse",
+            )
+            result = json.loads(resp["Payload"].read().decode("utf-8"))
+            output.append(result)
 
-        resp = self._client.invoke(
-            FunctionName=self.function_name,
-            Payload=payload,
-            InvocationType="RequestResponse",
-        )
-        return resp
+        return output
 
 
 # from enum import Enum
@@ -35,7 +41,7 @@ class AWS:
 #     pass
 
 
-# class Provider(Enum):
+# class ProviderType(Enum):
 #     AWS = AWS
 #     GCP = GCP
 #     Azure = Azure

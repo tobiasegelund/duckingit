@@ -1,15 +1,10 @@
+import os
+
 import duckdb
-from enum import Enum
 
+from ._controller import LocalController
+from ._planner import Planner
 from ._provider import AWS
-from ._optimizer import optimize
-
-
-class Format(Enum):
-    PARQUET = "parquet"
-    DATAFRAME = "pd.DataFrame"
-    ORC = "ORC"
-    AVRO = "AVRO"
 
 
 class DuckSession:
@@ -17,26 +12,46 @@ class DuckSession:
 
     def __init__(
         self,
-        function: str = "DuckExecutor",
+        function_name: str = "DuckExecutor",
         # controller_function: str = "DuckController",
         duckdb_config: str = ":memory:",
         invokations_default: int = 1,
         # format: str = "parquet",
-        **kwargs
+        **kwargs,
     ) -> None:
-        self.provider = AWS(function_name=function)
-        self.conn = duckdb.connect(duckdb_config)
         self.invokations_default = invokations_default
         # self.format = format
         self.kwargs = kwargs
 
-        self._install_httpfs()
+        self.conn = duckdb.connect(duckdb_config)
+        self._controller = LocalController(
+            conn=self.conn, provider=AWS(function_name=function_name)
+        )
+        self._planner = Planner(conn=self.conn)
 
-    def _install_httpfs(self) -> None:
-        self.conn.execute("INSTALL httpfs;")
+        self._load_httpfs()
+        self._set_credentials()
+
+    def _load_httpfs(self) -> None:
+        self.conn.execute("INSTALL httpfs; LOAD httpfs;")
+
+    def _set_credentials(self) -> None:
+        # TODO: Must be more generic to work on other providers
+        self.conn.execute(
+            f"""
+            SET s3_region={os.getenv("AWS_DEFAULT_REGION")};
+            SET s3_access_key_id={os.getenv("AWS_ACCESS_KEY_ID")};
+            SET s3_secret_access_key={os.getenv("AWS_SECRET_ACCESS_KEY")};
+            """
+        )
+
+    def _create_execution_plan(self, query: str, invokations: int) -> list[str]:
+        list_of_queries = self._planner.plan(query=query, invokations=invokations)
+
+        return list_of_queries
 
     def execute(self, query: str, *, invokations: int | None = None):
-        """Divide the
+        """Execute query
 
         Args:
             function_name, Optional(str):
@@ -48,6 +63,8 @@ class DuckSession:
             invokations if invokations is not None else self.invokations_default
         )
 
-        list_of_queries = optimize(
-            query=query, conn=self.conn, invokations=number_of_invokations
+        execution_plan = self._create_execution_plan(
+            query=query, invokations=number_of_invokations
         )
+
+        self._controller.invoke(queries=execution_plan)
