@@ -18,7 +18,7 @@ class AWS(Provider):
         # TODO: Rewrite to async
         output = list()
         for query in queries:
-            payload = query
+            payload = json.dumps(query)
 
             resp = self._client.invoke(
                 FunctionName=self.function_name,

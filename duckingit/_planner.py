@@ -10,24 +10,34 @@ class Planner:
     def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
         self.conn = conn
 
-    def scan_bucket(self, bucket: str) -> list[str]:
-        if bucket[-1] == "/":
-            bucket = bucket[:-1]
+    def scan_bucket(self, key: str) -> list[str]:
+        if key[-1] != "*":
+            return [key]
 
         # TODO: Count the number of files / size in each prefix to divide the workload better
-        data = self.conn.sql(
-            f"""
+        glob_query = f"""
             SELECT DISTINCT
                 regexp_replace(file, '/[^/]+$', '') AS prefix
-            FROM glob('{bucket}/*')
+            FROM glob('{key}')
             """
-        ).fetchall()
 
-        return data
+        prefixes = self.conn.sql(glob_query).fetchall()
 
-    def find_bucket(self, query: str) -> str:
-        buckets = parse_one(query).find_all(exp.Table)
-        return next(buckets).sql()
+        return prefixes
+
+    def find_key(self, query: str) -> str:
+        # TODO: Update exceptions to user-defined exceptions
+        scan_statements = parse_one(query).find_all(exp.Table)
+        scan_statement = next(scan_statements).sql()
+
+        # TODO: Update pattern for other filesystems
+        pattern = r"\(.*?(s3://[^/]+/.+(/\*|\.parquet)).*?\)"
+        match = re.search(pattern, scan_statement)
+
+        if match is None:
+            raise ValueError()
+
+        return match.group(1)
 
     def update_query(self, query: str, list_of_prefixes: list[str]) -> str:
         sub = f"read_parquet({list_of_prefixes})"
@@ -39,9 +49,9 @@ class Planner:
         return query_upd
 
     def plan(self, query: str, invokations: int) -> list[str]:
-        bucket = self.find_bucket(query)
+        key = self.find_key(query)
 
-        list_of_prefixes = self.scan_bucket(bucket=bucket)
+        list_of_prefixes = self.scan_bucket(key=key)
 
         # TODO: Heuristic to divide the workload between the invokations
 
