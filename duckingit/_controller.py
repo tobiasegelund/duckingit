@@ -10,7 +10,9 @@ class Controller:
     It invokes and collects the data, as well as concatenate it altogether before it's
     delivered to the user.
 
-    TODO: Incorporate cache functionality to minimize compute power.
+    TODO:
+        - Incorporate cache functionality to minimize compute power.
+        - Create Temp views of data?
     """
 
     pass

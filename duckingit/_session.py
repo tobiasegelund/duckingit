@@ -8,9 +8,11 @@ from ._optimizer import optimize
 class Format(Enum):
     PARQUET = "parquet"
     DATAFRAME = "pd.DataFrame"
+    ORC = "ORC"
+    AVRO = "AVRO"
 
 
-class DuckingIt:
+class DuckSession:
     def __init__(
         self, lambda_function: str, duckdb_config: str = ":memory:", **kwargs
     ) -> None:
@@ -23,7 +25,7 @@ class DuckingIt:
     def _install_httpfs(self) -> None:
         self.conn.execute("INSTALL httpfs;")
 
-    def collect(self, query: str, invokations: int = 1, format: str = "parquet"):
+    def sql(self, query: str, invokations: int = 1, format: str = "parquet"):
         """Divide the
 
         Args:

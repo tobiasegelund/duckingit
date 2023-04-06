@@ -4,11 +4,20 @@ import duckdb
 from sqlglot import parse_one, exp
 
 
+# class Planner:
+#     def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
+#         self.conn = conn
+
+
+# class Optimizer:
+#     pass
+
+
 def scan_bucket(conn: duckdb.DuckDBPyConnection, bucket: str) -> list[str]:
     if bucket[-1] == "/":
         bucket = bucket[:-1]
 
-    # TODO: Count the number of files in each prefix to divide the workload better
+    # TODO: Count the number of files / size in each prefix to divide the workload better
     data = conn.sql(
         f"""
         SELECT DISTINCT
@@ -28,6 +37,8 @@ def find_bucket(query: str) -> str:
 def update_query(query: str, list_of_prefixes: list[str]) -> str:
     sub = f"read_parquet({list_of_prefixes})"
 
+    # TODO: Add read_parquet here as well
+    # TODO: Lower case everything
     query_upd = re.sub(r"scan_parquet\([^)]*\)", sub, query)
 
     return query_upd

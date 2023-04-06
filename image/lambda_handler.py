@@ -1,3 +1,4 @@
+"""DuckDB executor"""
 import duckdb
 
 BUCKET_NAME = "s3-duckdb-tobiasegelund"
