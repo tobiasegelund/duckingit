@@ -16,3 +16,9 @@ class Controller:
     """
 
     pass
+
+
+class Parser:
+    """Class to parse the output from the invokations to duckdb.DuckDBPyRelation"""
+
+    pass

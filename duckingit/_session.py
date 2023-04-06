@@ -13,11 +13,21 @@ class Format(Enum):
 
 
 class DuckSession:
+    """Class to handle the session of DuckDB lambda functions"""
+
     def __init__(
-        self, lambda_function: str, duckdb_config: str = ":memory:", **kwargs
+        self,
+        function: str = "DuckExecutor",
+        # controller_function: str = "DuckController",
+        duckdb_config: str = ":memory:",
+        invokations_default: int = 1,
+        # format: str = "parquet",
+        **kwargs
     ) -> None:
-        self.provider = AWS(function_name=lambda_function)
+        self.provider = AWS(function_name=function)
         self.conn = duckdb.connect(duckdb_config)
+        self.invokations_default = invokations_default
+        # self.format = format
         self.kwargs = kwargs
 
         self._install_httpfs()
@@ -25,7 +35,7 @@ class DuckSession:
     def _install_httpfs(self) -> None:
         self.conn.execute("INSTALL httpfs;")
 
-    def sql(self, query: str, invokations: int = 1, format: str = "parquet"):
+    def execute(self, query: str, *, invokations: int | None = None):
         """Divide the
 
         Args:
@@ -34,4 +44,10 @@ class DuckSession:
             invokations, int:
                 Defaults to 1
         """
-        list_of_queries = optimize(query=query, conn=self.conn, invokations=invokations)
+        number_of_invokations = (
+            invokations if invokations is not None else self.invokations_default
+        )
+
+        list_of_queries = optimize(
+            query=query, conn=self.conn, invokations=number_of_invokations
+        )
