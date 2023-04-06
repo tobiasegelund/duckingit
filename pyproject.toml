@@ -8,7 +8,7 @@ version = "0.1.0"
 authors = [
   {name="Tobias Egelund", email="egelundtobias@gmail.com" },
 ]
-description = "A framework to leverage clustering of serverless functions for analytics. Powered by DuckDB"
+description = "A framework to leverage clusters of serverless functions for analytics. Powered by DuckDB"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["Serverless", "DuckDB", "Data Engineering"]
