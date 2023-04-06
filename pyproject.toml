@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "duckingit"
+version = "0.1.0"
+authors = [
+  {name="Tobias Egelund", email="egelundtobias@gmail.com" },
+]
+description = "A framework to leverage clustering of serverless function computing for analytics. Powered by DuckDB"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["Serverless", "DuckDB", "Data Engineering"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "boto3",
+    "duckdb",
+    'sqlglot',
+    'pandas',
+    'pyarrow',
+]
+
+[project.urls]
+"Homepage" = "https://github.com/tobiasegelund/duckingit"
+"Bug Tracker" = "https://github.com/tobiasegelund/duckingit/issues"

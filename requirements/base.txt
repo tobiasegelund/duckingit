@@ -2,3 +2,4 @@ boto3
 duckdb
 sqlglot
 pandas
+pyarrow
