@@ -70,7 +70,7 @@ invokation_type parameter."
     def _handle_error(self, resp: dict) -> None:
         if "errorMessage" in resp.keys():
             # TODO: Create user-defined exception
-            raise ValueError(f"{resp.get('errorType')}: {resp.get('errorMessage')}")
+            raise ValueError(f"{resp.get('errorMessage')}")
 
 
 # from enum import Enum

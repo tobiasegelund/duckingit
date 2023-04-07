@@ -39,6 +39,10 @@ class Planner:
     def _split_list_in_chunks(
         self, _list: list[str], number_of_invokations: int
     ) -> list[list]:
+        # Must not invoke more functions than number of search queries
+        if (size := len(_list)) < number_of_invokations:
+            number_of_invokations = size
+
         k, m = divmod(len(_list), number_of_invokations)
         return [
             _list[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
@@ -66,7 +70,7 @@ found. Did you try to run local files?"
     def update_query(self, query: str, list_of_prefixes: list[str]) -> str:
         sub = f"read_parquet({list_of_prefixes})"
 
-        query_upd = re.sub(r"(scan_parquet|read_parqet)\([^)]*\)", sub, query)
+        query_upd = re.sub(r"(?:scan|read)_parquet\([^)]*\)", sub, query)
 
         return query_upd
 

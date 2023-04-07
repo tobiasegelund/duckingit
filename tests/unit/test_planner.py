@@ -109,6 +109,15 @@ def test_update_query(query, prefix, expected, planner):
                 "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/*']) WHERE 1=1",
                 "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/03/*']) WHERE 1=1",
             ],
+            4,
+        ),
+        (
+            "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/*']) WHERE 1=1",
+            [
+                "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/01/*']) WHERE 1=1",
+                "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/*']) WHERE 1=1",
+                "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/03/*']) WHERE 1=1",
+            ],
             "auto",
         ),
     ],

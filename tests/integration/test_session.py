@@ -13,8 +13,18 @@ BUCKET_NAME = "s3-duckdb-tobiasegelund"
             100,
         ),
         (
+            f"SELECT * FROM read_parquet(['s3://{BUCKET_NAME}/2023/01/*'])",
+            2,
+            100,
+        ),
+        (
             f"SELECT * FROM read_parquet(['s3://{BUCKET_NAME}/2023/*'])",
             1,
+            1600,
+        ),
+        (
+            f"SELECT * FROM read_parquet(['s3://{BUCKET_NAME}/2023/*'])",
+            "auto",
             1600,
         ),
     ],
