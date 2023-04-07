@@ -85,7 +85,3 @@ class DuckSession:
         self._metadata[table_name] = query
 
         return duckdb_obj
-
-
-class MockDuckSession(DuckSession):
-    pass

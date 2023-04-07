@@ -1,12 +1,11 @@
 import duckdb
 import pytest
 
-from duckingit._planner import MockPlanner
 from duckingit._exceptions import WrongInvokationType
 
 
 @pytest.fixture
-def planner():
+def planner(MockPlanner):
     conn = duckdb.connect(":memory:")
     planner = MockPlanner(conn=conn)
     yield planner

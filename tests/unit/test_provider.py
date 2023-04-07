@@ -1,10 +1,10 @@
 import pytest
 
-from duckingit._provider import MockAWS
+from duckingit._provider import AWS
 
 
 @pytest.fixture
-def mockAWS():
+def mockAWS(MockAWS):
     yield MockAWS(function_name="TestFunc")
 
 

@@ -73,15 +73,6 @@ invokation_type parameter."
             raise ValueError(f"{resp.get('errorType')}: {resp.get('errorMessage')}")
 
 
-class MockAWS(AWS):
-    def _invoke_lambda_sync(self, request_payload: str) -> dict:
-        return {
-            "data": [(100, "John", "Doe"), (101, "Eric", "Doe"), (102, "Maria", "Doe")],
-            "dtypes": ["BIGINT", "VARCHAR", "VARCHAR"],
-            "columns": ["id", "first_name", "last_name"],
-        }
-
-
 # from enum import Enum
 
 # class GCP:

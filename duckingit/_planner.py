@@ -95,18 +95,6 @@ class Planner:
         return updated_queries
 
 
-class MockPlanner(Planner):
-    def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
-        self.conn = conn
-
-    def scan_bucket(self, key: str) -> list[str]:
-        return [
-            "s3://<BUCKET_NAME>/2023/01/*",
-            "s3://<BUCKET_NAME>/2023/02/*",
-            "s3://<BUCKET_NAME>/2023/03/*",
-        ]
-
-
 class QueryParser:
     """Class to unify queries"""
 
