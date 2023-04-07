@@ -148,3 +148,8 @@ TODO.md
 .vscode
 
 image/release/*
+
+# Terraform
+*.tfstate
+*.lock.hcl
+*.terraform
