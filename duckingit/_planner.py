@@ -109,7 +109,18 @@ class MockPlanner(Planner):
 
 
 class QueryParser:
-    pass
+    """Class to unify queries"""
+
+    @classmethod
+    def apply_lower_case(cls, query: str) -> str:
+        # TODO: Logic to make sure uppercase names are still in place
+        return query.lower()
+
+    @classmethod
+    def parse(cls, query: str) -> str:
+        query = cls.apply_lower_case(query)
+
+        return query
 
 
 # class Optimizer:
