@@ -8,7 +8,21 @@ from ._provider import AWS
 
 
 class DuckSession:
-    """Class to handle the session of DuckDB lambda functions"""
+    """Entrypoint to the session of DuckDB instances
+
+    The main objective of this class is to handle the session and serve as the primary
+    entrypoint to a cluster of serverless functions that utilize DuckDB. Its core
+    functionality involves planning, distributing, and scaling the number of DuckDB
+    instances, as well as merging the results before returning them to the query issuer.
+
+    Attributes:
+        conn, duckdb.DuckDBPyConnection: The initialized DuckDB connection
+        metadata, dict: Metadata on temporary tables created using the DuckSession
+
+    Methods:
+        execute: Execute a DuckDB SQL query concurrently using X number of invokations
+
+    """
 
     def __init__(
         self,
@@ -19,6 +33,18 @@ class DuckSession:
         # format: str = "parquet",
         **kwargs,
     ) -> None:
+        """Initiliaze a session
+
+        Args:
+            function_name, str: The name of the serverless function
+                Defaults to "DuckExecutor"
+            duckdb_config, dict: DuckDB configurations of the connection. Please take a
+                look on their documention.
+                Defaults to {"database": ":memory:", "read_only": False}
+            invokations_default, int | 'auto': The default number of invokations.
+                Defaults to 'auto'
+            **kwargs
+        """
         self._function_name = function_name
         self._invokations_default = invokations_default
         # self.format = format
@@ -63,7 +89,7 @@ class DuckSession:
             """
         )
 
-    def _create_execution_plan(self, query: str, invokations: int) -> list[str]:
+    def _create_execution_plan(self, query: str, invokations: int | str) -> list[str]:
         list_of_queries = self._planner.plan(query=query, invokations=invokations)
 
         return list_of_queries
@@ -71,13 +97,13 @@ class DuckSession:
     def execute(
         self, query: str, *, invokations: int | None = None
     ) -> duckdb.DuckDBPyRelation:
-        """Execute query
+        """Execute the query against a number of serverless functions
 
         Args:
-            function_name, Optional(str):
+            query, str: DuckDB SQL query to run
                 Defaults to create a new Lambda function
-            invokations, int:
-                Defaults to 1
+            invokations, int | None:
+                Defaults to 'auto' (See initialization of the session class)
         """
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default

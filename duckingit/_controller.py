@@ -18,7 +18,7 @@ class Format(Enum):
 
 
 class Controller:
-    def execute(self) -> duckdb.DuckDBPyRelation:
+    def execute(self, queries: list[str]) -> duckdb.DuckDBPyRelation:
         raise NotImplementedError()
 
 
