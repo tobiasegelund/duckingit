@@ -55,6 +55,11 @@ def test_find_key(query, expected, planner):
             ["s3://<BUCKET_NAME>/2023/02/test2.parquet"],
             "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
         ),
+        (
+            "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
+            ["s3://<BUCKET_NAME>/2023/02/test2.parquet"],
+            "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
+        ),
     ],
 )
 def test_update_query(query, prefix, expected, planner):

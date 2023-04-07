@@ -2,13 +2,12 @@ import re
 import itertools
 
 import duckdb
-from sqlglot import parse_one, exp
+import sqlglot
 
-from ._exceptions import WrongInvokationType
+from ._exceptions import WrongInvokationType, InvalidFilesystem, InvalidQueryFormat
 
 
 class Planner:
-    # TODO: Validate that the prefix/file exists else raise Exception
     def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
         self.conn = conn
 
@@ -48,7 +47,7 @@ class Planner:
 
     def find_key(self, query: str) -> str:
         # TODO: Update exceptions to user-defined exceptions
-        scan_statements = parse_one(query).find_all(exp.Table)
+        scan_statements = sqlglot.parse_one(query).find_all(sqlglot.exp.Table)
         scan_statement = next(scan_statements).sql()
 
         # TODO: Update pattern for other filesystems or extensions
@@ -56,22 +55,25 @@ class Planner:
         match = re.search(pattern, scan_statement)
 
         if match is None:
-            raise ValueError()
+            # TODO: Validate that the prefix/file exists else raise Exception
+            raise InvalidFilesystem(
+                "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*' couldn't be \
+found. Did you try to run local files?"
+            )
 
         return match.group(1)
 
     def update_query(self, query: str, list_of_prefixes: list[str]) -> str:
         sub = f"read_parquet({list_of_prefixes})"
 
-        # TODO: Add read_parquet here as well
-        # TODO: Make lowercase
-        query_upd = re.sub(r"scan_parquet\([^)]*\)", sub, query)
+        query_upd = re.sub(r"(scan_parquet|read_parqet)\([^)]*\)", sub, query)
 
         return query_upd
 
     def plan(self, query: str, invokations: int | str) -> list[str]:
-        key = self.find_key(query)
+        query = QueryParser.parse(query)
 
+        key = self.find_key(query)
         list_of_prefixes = self.scan_bucket(key=key)
 
         if isinstance(invokations, str):
@@ -96,7 +98,20 @@ class Planner:
 
 
 class QueryParser:
-    """Class to unify queries"""
+    """Class to unify queries
+
+    TODO:
+        - Validate that S3 etc. is in the query?
+        - Add date as column based on prefix?
+    """
+
+    @classmethod
+    def verify_query(cls, query: str) -> str:
+        try:
+            sqlglot.parse_one(query)
+        except Exception as e:
+            raise InvalidQueryFormat(e)
+        return query
 
     @classmethod
     def apply_lower_case(cls, query: str) -> str:
@@ -105,7 +120,8 @@ class QueryParser:
 
     @classmethod
     def parse(cls, query: str) -> str:
-        query = cls.apply_lower_case(query)
+        query = cls.verify_query(query)
+        # query = cls.apply_lower_case(query)
 
         return query
 

@@ -2,7 +2,7 @@ import os
 
 import duckdb
 
-from ._controller import LocalController
+from ._controller import Controller, LocalController
 from ._planner import Planner
 from ._provider import AWS
 
@@ -19,6 +19,7 @@ class DuckSession:
         # format: str = "parquet",
         **kwargs,
     ) -> None:
+        self._function_name = function_name
         self._invokations_default = invokations_default
         # self.format = format
         self._kwargs = kwargs
@@ -27,10 +28,8 @@ class DuckSession:
         self._load_httpfs()
         self._set_credentials()
 
-        self._controller = LocalController(
-            conn=self._conn, provider=AWS(function_name=function_name)
-        )
-        self._planner = Planner(conn=self._conn)
+        self._controller = self._set_controller()
+        self._planner = self._set_planner()
 
         self._metadata: dict[str, str] = dict()
 
@@ -41,6 +40,14 @@ class DuckSession:
     @property
     def conn(self) -> duckdb.DuckDBPyConnection:
         return self._conn
+
+    def _set_planner(self) -> Planner:
+        return Planner(conn=self._conn)
+
+    def _set_controller(self) -> Controller:
+        return LocalController(
+            conn=self._conn, provider=AWS(function_name=self._function_name)
+        )
 
     def _load_httpfs(self) -> None:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")

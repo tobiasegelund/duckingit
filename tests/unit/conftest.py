@@ -4,6 +4,7 @@ import duckdb
 from duckingit._provider import AWS
 from duckingit._planner import Planner
 from duckingit._session import DuckSession
+from duckingit._controller import LocalController
 
 
 class _MockAWS(AWS):
@@ -28,7 +29,13 @@ class _MockPlanner(Planner):
 
 
 class _MockDuckSession(DuckSession):
-    pass
+    def _set_planner(self) -> Planner:
+        return _MockPlanner(conn=self._conn)
+
+    def _set_controller(self):
+        return LocalController(
+            conn=self._conn, provider=_MockAWS(function_name=self._function_name)
+        )
 
 
 @pytest.fixture
