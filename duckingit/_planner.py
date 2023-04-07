@@ -92,7 +92,6 @@ class Planner:
         for chunk in list_of_chunks_of_prefixes:
             query_upd = self.update_query(query=query, list_of_prefixes=chunk)
             updated_queries.append(query_upd)
-
         return updated_queries
 
 
