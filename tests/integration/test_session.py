@@ -1,16 +1,19 @@
 import pytest
 
 
+BUCKET_NAME = "s3-duckdb-tobiasegelund"
+
+
 @pytest.mark.parametrize(
     "query, invokations, expected",
     [
         (
-            "SELECT * FROM read_parquet(['s3://s3-duckdb-tobiasegelund/2023/01/*'])",
+            f"SELECT * FROM read_parquet(['s3://{BUCKET_NAME}/2023/01/*'])",
             1,
             100,
         ),
         (
-            "SELECT * FROM read_parquet(['s3://s3-duckdb-tobiasegelund/2023/*'])",
+            f"SELECT * FROM read_parquet(['s3://{BUCKET_NAME}/2023/*'])",
             1,
             1600,
         ),
