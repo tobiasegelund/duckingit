@@ -27,3 +27,15 @@ enter:
 		-it \
 		--rm \
 		duckdb
+
+init:
+	cd infrastructure && terraform init
+
+plan:
+	cd infrastructure && terraform plan
+
+apply:
+	cd infrastructure && terraform apply -auto-approve
+
+destroy:
+	cd infrastructure && terraform apply -auto-approve
