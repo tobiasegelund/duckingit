@@ -37,7 +37,7 @@ def planner(MockPlanner):
     ],
 )
 def test_find_key(query, expected, planner):
-    got = planner.find_key(query=query)
+    got = planner._find_key(query=query)
 
     assert got == expected
 
@@ -63,7 +63,7 @@ def test_find_key(query, expected, planner):
     ],
 )
 def test_update_query(query, prefix, expected, planner):
-    got = planner.update_query(query=query, list_of_prefixes=prefix)
+    got = planner._update_query(query=query, list_of_prefixes=prefix)
 
     assert got == expected
 
