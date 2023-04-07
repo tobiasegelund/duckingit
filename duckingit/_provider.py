@@ -1,5 +1,6 @@
 import json
 import asyncio
+from typing import Literal
 
 import boto3
 
@@ -10,12 +11,20 @@ class Provider:
 
 
 class AWS(Provider):
-    def __init__(self, function_name: str) -> None:
+    def __init__(
+        self, function_name: str, invokation_type: Literal["sync", "async"] = "async"
+    ) -> None:
+        if invokation_type not in ["sync", "async"]:
+            raise ValueError(
+                f"{invokation_type} isn't an option. Only 'sync' or 'async' as \
+invokation_type parameter."
+            )
         self.function_name = function_name
+        self.invokation_type = invokation_type
 
         self._client = boto3.client("lambda")
 
-    def _invoke_sync(self, queries: list[str]) -> list[dict]:
+    def invoke_sync(self, queries: list[str]) -> list[dict]:
         output = list()
         for query in queries:
             request_payload = json.dumps({"body": query})
@@ -23,6 +32,9 @@ class AWS(Provider):
             output.append(result)
 
         return output
+
+    def invoke_async(self, queries: list[str]) -> list[dict]:
+        return asyncio.run(self._invoke_async(queries=queries))
 
     async def _invoke_async(self, queries: list[str]):
         tasks = []
@@ -51,9 +63,9 @@ class AWS(Provider):
         return self._invoke_lambda_sync(request_payload=request_payload)
 
     def invoke(self, queries: list[str]) -> list[dict]:
-        # output = self._invoke_sync(queries=queries)
-        output = asyncio.run(self._invoke_async(queries=queries))
-        return output
+        if self.invokation_type == "sync":
+            return self.invoke_sync(queries=queries)
+        return self.invoke_async(queries=queries)
 
     def _handle_error(self, resp: dict) -> None:
         if "errorMessage" in resp.keys():
@@ -61,9 +73,13 @@ class AWS(Provider):
             raise ValueError(f"{resp.get('errorType')}: {resp.get('errorMessage')}")
 
 
-class MockProvider(Provider):
-    def _invoke_lambda_sync(self, payload: str):
-        pass
+class MockAWS(AWS):
+    def _invoke_lambda_sync(self, request_payload: str) -> dict:
+        return {
+            "data": [(100, "John", "Doe"), (101, "Eric", "Doe"), (102, "Maria", "Doe")],
+            "dtypes": ["BIGINT", "VARCHAR", "VARCHAR"],
+            "columns": ["id", "first_name", "last_name"],
+        }
 
 
 # from enum import Enum
