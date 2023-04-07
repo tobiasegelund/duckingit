@@ -1,0 +1,2 @@
+class WrongInvokationType(Exception):
+    pass

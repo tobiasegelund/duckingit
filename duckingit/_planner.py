@@ -4,6 +4,8 @@ import itertools
 import duckdb
 from sqlglot import parse_one, exp
 
+from ._exceptions import WrongInvokationType
+
 
 class Planner:
     # TODO: Validate that the prefix/file exists else raise Exception
@@ -35,12 +37,21 @@ class Planner:
     def _flatten_list(self, _list: list) -> list:
         return list(itertools.chain(*_list))
 
+    def _split_list_in_chunks(
+        self, _list: list[str], number_of_invokations: int
+    ) -> list[list]:
+        k, m = divmod(len(_list), number_of_invokations)
+        return [
+            _list[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
+            for i in range(number_of_invokations)
+        ]
+
     def find_key(self, query: str) -> str:
         # TODO: Update exceptions to user-defined exceptions
         scan_statements = parse_one(query).find_all(exp.Table)
         scan_statement = next(scan_statements).sql()
 
-        # TODO: Update pattern for other filesystems
+        # TODO: Update pattern for other filesystems or extensions
         pattern = r"\(.*?(s3://[^/]+/.+(/\*|\.parquet|\*)).*?\)"
         match = re.search(pattern, scan_statement)
 
@@ -58,18 +69,31 @@ class Planner:
 
         return query_upd
 
-    def plan(self, query: str, invokations: int) -> list[str]:
+    def plan(self, query: str, invokations: int | str) -> list[str]:
         key = self.find_key(query)
 
         list_of_prefixes = self.scan_bucket(key=key)
 
-        # TODO: Heuristic to divide the workload between the invokations
+        if isinstance(invokations, str):
+            if invokations != "auto":
+                raise WrongInvokationType(
+                    f"The number of invokations can only be 'auto' or an integer. \
+{invokations} was provided."
+                )
+            invokations = len(list_of_prefixes)
 
-        # TODO: Create loop
-        query_upd = self.update_query(query=query, list_of_prefixes=list_of_prefixes)
+        # TODO: Heuristic to divide the workload between the invokations based on size of prefixes / number of files etc.
+        # Or based on some deeper analysis of the query?
+        list_of_chunks_of_prefixes = self._split_list_in_chunks(
+            list_of_prefixes, number_of_invokations=invokations
+        )
 
-        # TODO: Remove list here
-        return [query_upd]
+        updated_queries = list()
+        for chunk in list_of_chunks_of_prefixes:
+            query_upd = self.update_query(query=query, list_of_prefixes=chunk)
+            updated_queries.append(query_upd)
+
+        return updated_queries
 
 
 class MockPlanner(Planner):
@@ -82,6 +106,10 @@ class MockPlanner(Planner):
             "s3://<BUCKET_NAME>/2023/02/*",
             "s3://<BUCKET_NAME>/2023/03/*",
         ]
+
+
+class QueryParser:
+    pass
 
 
 # class Optimizer:

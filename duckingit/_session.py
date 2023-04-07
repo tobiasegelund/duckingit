@@ -15,7 +15,7 @@ class DuckSession:
         function_name: str = "DuckExecutor",
         # controller_function: str = "DuckController",
         duckdb_config: str = ":memory:",
-        invokations_default: int = 1,
+        invokations_default: int | str = "auto",
         # format: str = "parquet",
         **kwargs,
     ) -> None:
