@@ -14,7 +14,7 @@ class DuckSession:
         self,
         function_name: str = "DuckExecutor",
         # controller_function: str = "DuckController",
-        duckdb_config: str = ":memory:",
+        duckdb_config: dict = {"database": ":memory:", "read_only": False},
         invokations_default: int | str = "auto",
         # format: str = "parquet",
         **kwargs,
@@ -24,7 +24,7 @@ class DuckSession:
         # self.format = format
         self._kwargs = kwargs
 
-        self._conn = duckdb.connect(duckdb_config)
+        self._conn = duckdb.connect(**duckdb_config)
         self._load_httpfs()
         self._set_credentials()
 
@@ -53,6 +53,7 @@ class DuckSession:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
 
     def _set_credentials(self) -> None:
+        # https://duckdb.org/docs/sql/configuration.html
         # TODO: Must be more generic to work on other providers
         self._conn.execute(
             f"""

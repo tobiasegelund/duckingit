@@ -1,14 +1,15 @@
 import duckdb
 
+con = duckdb.connect(
+    database=":memory:",
+    read_only=False,
+    # config={"allow_unsigned_extensions": "true"},
+)
+
+con.execute("SET home_directory='/opt/python'; LOAD httpfs;")
+
 
 def lambda_handler(event, context):
-    con = duckdb.connect(
-        database=":memory:",
-        read_only=False,
-        # config={"allow_unsigned_extensions": "true"},
-    )
-
-    con.execute("SET home_directory='/opt/python'; LOAD httpfs;")
     # con.execute("SET home_directory='/tmp'; INSTALL httpfs; LOAD httpfs;")
 
     # con.execute(
