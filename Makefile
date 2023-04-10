@@ -1,4 +1,4 @@
-release: build copy
+release-image: build-image copy-image
 
 test-unit:
 	pytest tests/unit -s
@@ -6,20 +6,20 @@ test-unit:
 test-integration:
 	pytest tests/integration -s
 
-flake8:
+lint:
 	flake8 duckingit tests --ignore E501,F401
 
-build:
+build-image:
 	cd image/ && docker build . -t duckdb
 
-copy:
+copy-image:
 	cd image/ && \
 	mkdir -p release/ && \
 	docker create --name duck duckdb && \
 	docker cp duck:/tmp/release/duckdb-layer.zip release/duckdb-layer.zip && \
 	docker rm duck
 
-enter:
+enter-image:
 	docker run \
 		-e AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' \
 		-e AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' \
@@ -28,14 +28,20 @@ enter:
 		--rm \
 		duckdb
 
-init:
+init-tf:
 	cd infrastructure && terraform init
 
-plan:
+plan-tf:
 	cd infrastructure && terraform plan
 
-apply:
+apply-tf:
 	cd infrastructure && terraform apply -auto-approve
 
-destroy:
+destroy-tf:
 	cd infrastructure && terraform apply -auto-approve
+
+build-package:
+	python3 -m build
+
+upload-package:
+	python3 -m twine upload dist/*
