@@ -60,7 +60,7 @@ invokation_type parameter."
         )
 
         resp_payload = json.loads(resp["Payload"].read().decode("utf-8"))
-        self._raise_error_if_no_success(response=resp_payload)
+        self._validate_lambda_response(response=resp_payload)
 
     async def _invoke_lambda_async(self, request_payload: str) -> None:
         """Wrapper to make it async"""
@@ -75,7 +75,7 @@ invokation_type parameter."
         # TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken
         raise NotImplementedError()
 
-    def _raise_error_if_no_success(self, response: dict) -> None:
+    def _validate_lambda_response(self, response: dict) -> None:
         try:
             if response["statusCode"] not in [200, 202]:
                 raise ValueError(
@@ -83,6 +83,15 @@ invokation_type parameter."
                 )
         except KeyError as _:
             raise MisConfigurationError(response)
+
+    def _validate_configuration_reponse(self, response: dict) -> None:
+        if response.get("ResponseMetadata").get("HTTPStatusCode") != 200:
+            raise MisConfigurationError(response)
+
+    def _update_configurations(self, configs: dict) -> None:
+        response = self._client.update_function_configuration(**configs)
+
+        self._validate_configuration_reponse(response=response)
 
 
 # class GCP:
