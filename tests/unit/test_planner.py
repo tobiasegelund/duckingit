@@ -12,37 +12,6 @@ def planner(MockPlanner):
 
 
 @pytest.mark.parametrize(
-    "query, expected",
-    [
-        (
-            "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet'])",
-            "s3://<BUCKET_NAME>/2023/02/test2.parquet",
-        ),
-        (
-            "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
-            "s3://<BUCKET_NAME>/2023/02/test2.parquet",
-        ),
-        (
-            "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
-            "s3://<BUCKET_NAME>/2023/02/test2.parquet",
-        ),
-        (
-            "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/01/*'], filename=true)",
-            "s3://<BUCKET_NAME>/2023/01/*",
-        ),
-        (
-            "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/01/*'], filename=true)",
-            "s3://<BUCKET_NAME>/2023/01/*",
-        ),
-    ],
-)
-def test_find_key(query, expected, planner):
-    got = planner._find_key(query=query)
-
-    assert got == expected
-
-
-@pytest.mark.parametrize(
     "query, prefix, expected",
     [
         (
