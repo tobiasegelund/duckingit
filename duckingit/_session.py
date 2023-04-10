@@ -38,7 +38,7 @@ class DuckSession:
         # controller_function: str = "DuckController",
         duckdb_config: dict = {"database": ":memory:", "read_only": False},
         invokations_default: int | str = "auto",
-        # format: str = "parquet",
+        enable_cache: bool = True,
         **kwargs,
     ) -> None:
         """Initiliaze a session of serverless DuckDB instances
@@ -51,11 +51,13 @@ class DuckSession:
                 Defaults to {"database": ":memory:", "read_only": False}
             invokations_default, int | 'auto': The default number of invokations.
                 Defaults to 'auto'
+            enable_cache, bool: Caches client-side, ie. caches are stored in memory on
+                the machine running the DuckSession. Defaults to True
             **kwargs
         """
         self._function_name = function_name
         self._invokations_default = invokations_default
-        # self.format = format
+        self.enable_cache = enable_cache
         self._kwargs = kwargs
 
         self._conn = duckdb.connect(**duckdb_config)
@@ -80,7 +82,9 @@ class DuckSession:
 
     def _set_controller(self) -> Controller:
         return LocalController(
-            conn=self._conn, provider=AWS(function_name=self._function_name)
+            conn=self._conn,
+            provider=AWS(function_name=self._function_name),
+            enable_cache=self.enable_cache,
         )
 
     def _load_httpfs(self) -> None:
@@ -88,7 +92,7 @@ class DuckSession:
 
     def _set_credentials(self) -> None:
         # https://duckdb.org/docs/sql/configuration.html
-        # TODO: Must be more generic to work on other providers
+        # TODO: Must be more generic to work with other providers
         self._conn.execute(
             f"""
             SET s3_region='{os.getenv("AWS_DEFAULT_REGION", None)}';
@@ -104,14 +108,15 @@ class DuckSession:
 
         return list_of_queries
 
-    def _create_prefix(
-        self, bucket_name: str, query_hash: str, write_to: str | None
-    ) -> str:
+    def _create_prefix(self, query: str, write_to: str | None) -> str:
+        query_hashed = QueryParser.hash_query(query=query)
+        bucket_name = QueryParser.find_bucket(query=query)
+
         if write_to is not None:
             if write_to[-1] != "/":
                 return write_to
             return write_to[:-1]
-        return f"{bucket_name}/{self._CACHE_PREFIX}/{query_hash}"
+        return f"{bucket_name}/{self._CACHE_PREFIX}/{query_hashed}"
 
     def execute(
         self, query: str, *, invokations: int | None = None, write_to: str | None = None
@@ -120,23 +125,18 @@ class DuckSession:
 
         Args:
             query, str: DuckDB SQL query to run
-                Defaults to create a new Lambda function
-            invokations, int | None:
+            invokations, int | None: The number of invokations of the Lambda function
                 Defaults to 'auto' (See initialization of the session class)
-            write_to, str | None: The prefix to write to. E.g. 's3://BUCKET_NAME/2023/01'
+            write_to, str | None: The prefix to write to, e.g. 's3://BUCKET_NAME/data'
+                Defaults to .cache/duckingit/ prefix
         """
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
         )
+        prefix = self._create_prefix(query=query, write_to=write_to)
 
         execution_plan = self._create_execution_plan(
             query=query, invokations=number_of_invokations
-        )
-        query_hashed = QueryParser.hash_query(query=query)
-        bucket_name = QueryParser.find_bucket(query=query)
-
-        prefix = self._create_prefix(
-            bucket_name=bucket_name, query_hash=query_hashed, write_to=write_to
         )
 
         duckdb_obj, table_name = self._controller.execute(
@@ -144,6 +144,7 @@ class DuckSession:
         )
 
         # Update metadata
-        self._metadata[table_name] = query
+        if table_name != "":
+            self._metadata[table_name] = query
 
         return duckdb_obj

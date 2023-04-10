@@ -28,9 +28,15 @@ class LocalController(Controller):
 
     _CACHE_PREFIX = ".cache/duckingit"
 
-    def __init__(self, conn: duckdb.DuckDBPyConnection, provider: Provider) -> None:
+    def __init__(
+        self,
+        conn: duckdb.DuckDBPyConnection,
+        provider: Provider,
+        enable_cache: bool = True,
+    ) -> None:
         self.conn = conn
         self.provider = provider
+        self.enable_cache = enable_cache
 
     def _scan_cached_data(self, query_hash: str):
         pass
@@ -48,14 +54,21 @@ class LocalController(Controller):
         )
 
     def execute(
-        self, queries: list[str], prefix: str
+        self,
+        queries: list[str],
+        prefix: str,
     ) -> tuple[duckdb.DuckDBPyRelation, str]:
         self.provider.invoke(queries=queries, prefix=prefix)
 
-        table_name = self._create_tmp_table_name()
-        self._create_tmp_table(table_name=table_name, prefix=prefix)
+        if self.enable_cache:
+            table_name = self._create_tmp_table_name()
+            self._create_tmp_table(table_name=table_name, prefix=prefix)
+            return self.conn.sql("SELECT * FROM {}".format(table_name)), table_name
 
-        return self.conn.sql("SELECT * FROM {}".format(table_name)), table_name
+        return (
+            self.conn.sql(f"SELECT * FROM read_parquet(['{prefix}/*'])"),
+            "",
+        )
 
 
 # class RemoteController(Controller):
