@@ -20,12 +20,13 @@ class QueryParser:
 
     @classmethod
     def find_bucket(cls, query: str) -> str:
-        pattern = r"s3::\/<([A-Za-z0-9_-]+)>"
+        pattern = r"s3:\/\/([A-Za-z0-9_-]+)"
         match = re.search(pattern, query)
 
         if not match:
             raise ValueError("Couldn't find bucket name in query")
-        return match.group(1)
+        # TODO: Make regex more generic
+        return "s3://" + match.group(1)
 
     @classmethod
     def find_key(cls, query: str) -> str:

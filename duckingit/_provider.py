@@ -30,7 +30,7 @@ invokation_type parameter."
         for query in queries:
             # TODO: Allow other naming options than just hashed
             query_hashed = QueryParser.hash_query(query)
-            key = prefix + "/" + query_hashed
+            key = prefix + "/" + query_hashed + ".parquet"
             request_payload = json.dumps({"query": query, "key": key})
             _ = self._invoke_lambda_sync(request_payload=request_payload)
 
@@ -41,7 +41,7 @@ invokation_type parameter."
         tasks = []
         for query in queries:
             query_hashed = QueryParser.hash_query(query)
-            key = prefix + "/" + query_hashed
+            key = prefix + "/" + query_hashed + ".parquet"
             request_payload = json.dumps({"query": query, "key": key})
 
             task = asyncio.create_task(self._invoke_lambda_async(request_payload))

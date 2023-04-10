@@ -9,9 +9,9 @@ def session(MockDuckSession):
 
 
 def test_DuckSession_execute(session):
-    expected = 9
+    expected = 3
     conn = session.execute(
-        query="SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/03/*'])"
+        query="SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/03/*'])"
     )
 
     got = len(conn.fetchall())
@@ -22,8 +22,8 @@ def test_DuckSession_execute(session):
 @pytest.mark.parametrize(
     "query",
     [
-        ("SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/03/*']"),
-        ("SELECT * FROM scan_parquet([s3://<BUCKET_NAME>/2023/03/*])"),
+        ("SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/03/*']"),
+        ("SELECT * FROM scan_parquet([s3://BUCKET_NAME/2023/03/*])"),
     ],
 )
 def test_DuckSession_query_error(query, session):

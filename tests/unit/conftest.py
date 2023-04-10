@@ -28,12 +28,22 @@ class _MockPlanner(Planner):
         ]
 
 
+class _MockLocalController(LocalController):
+    def _create_tmp_table_name(self) -> str:
+        return "tmp1"
+
+    def _create_tmp_table(self, table_name: str, prefix: str) -> None:
+        self.conn.sql(
+            "CREATE TEMP TABLE tmp1 AS (SELECT * FROM 'tests/unit/data/test_data.parquet')"
+        )
+
+
 class _MockDuckSession(DuckSession):
     def _set_planner(self) -> Planner:
         return _MockPlanner(conn=self._conn)
 
     def _set_controller(self):
-        return LocalController(
+        return _MockLocalController(
             conn=self._conn, provider=_MockAWS(function_name=self._function_name)
         )
 
