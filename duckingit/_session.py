@@ -4,6 +4,7 @@ import duckdb
 
 from ._controller import Controller, LocalController
 from ._planner import Planner
+from ._parser import QueryParser
 from ._provider import AWS
 
 
@@ -25,7 +26,7 @@ class DuckSession:
 
     Usage:
         >>> session = DuckSession()
-        >>> resp = session.execute(query="SELECT * FROM <TABLE>")
+        >>> resp = session.execute(query="SELECT * FROM scan_parquet(['s3::/<BUCKET_NAME>/*'])")
         >>> resp.show()
     """
 
@@ -99,12 +100,14 @@ class DuckSession:
         )
 
     def _create_execution_plan(self, query: str, invokations: int | str) -> list[str]:
-        list_of_queries = self._planner.plan(query=query, invokations=invokations)
+        list_of_queries = self._planner.generate_plan(
+            query=query, invokations=invokations
+        )
 
         return list_of_queries
 
     def execute(
-        self, query: str, *, invokations: int | None = None
+        self, query: str, *, invokations: int | None = None, write_to: str | None = None
     ) -> duckdb.DuckDBPyRelation:
         """Execute the query against a number of serverless functions
 
@@ -113,6 +116,7 @@ class DuckSession:
                 Defaults to create a new Lambda function
             invokations, int | None:
                 Defaults to 'auto' (See initialization of the session class)
+            write_to, str | None:
         """
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
@@ -122,7 +126,12 @@ class DuckSession:
             query=query, invokations=number_of_invokations
         )
 
-        duckdb_obj, table_name = self._controller.execute(queries=execution_plan)
+        query_hashed = QueryParser.hash_query(query=query)
+        bucket_name = QueryParser.find_bucket(query=query)
+
+        duckdb_obj, table_name = self._controller.execute(
+            queries=execution_plan, bucket_name=bucket_name, query_hash=query_hashed
+        )
 
         # Update metadata
         self._metadata[table_name] = query

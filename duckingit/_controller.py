@@ -4,13 +4,14 @@ https://arrow.apache.org/docs/python/ipc.html
 import uuid
 
 import duckdb
-import pandas as pd
 
 from ._provider import Provider
 
 
 class Controller:
-    def execute(self, queries: list[str]) -> duckdb.DuckDBPyRelation:
+    def execute(
+        self, queries: list[str], bucket_name: str, query_hash: str
+    ) -> tuple[duckdb.DuckDBPyRelation, str]:
         raise NotImplementedError()
 
 
@@ -25,32 +26,33 @@ class LocalController(Controller):
         - Incorporate cache functionality to minimize compute power.
     """
 
-    _cache_prefix = ".cache/duckingit/"
+    _CACHE_PREFIX = ".cache/duckingit/"
 
     def __init__(self, conn: duckdb.DuckDBPyConnection, provider: Provider) -> None:
         self.conn = conn
         self.provider = provider
 
-    def _extract_content(self, payload: dict) -> pd.DataFrame:
-        # TODO: Find a way to enforce dtypes to the dataframe => Conversion dict?
-        data = payload.get("data")
-        cols = payload.get("columns")
-        dtypes = payload.get("dtypes")
+    def _scan_cached_data(self, query_hash: str):
+        pass
 
-        return pd.DataFrame(data, columns=cols)
+    def _create_prefix(self, bucket_name: str, query_hash: str) -> str:
+        return f"{bucket_name}/{self._CACHE_PREFIX}/{query_hash}/"
 
-    def execute(self, queries: list[str]) -> tuple[duckdb.DuckDBPyRelation, str]:
-        payloads = self.provider.invoke(queries=queries)
-
-        dfs = list()
-        for payload in payloads:
-            _df = self._extract_content(payload=payload)
-            dfs.append(_df)
-
-        df = pd.concat(dfs, axis=0).reset_index(drop=True)
+    def execute(
+        self, queries: list[str], bucket_name: str, query_hash: str
+    ) -> tuple[duckdb.DuckDBPyRelation, str]:
+        prefix = self._create_prefix(bucket_name=bucket_name, query_hash=query_hash)
+        self.provider.invoke(queries=queries, prefix=prefix)
 
         table_name = f"__duckingit_{uuid.uuid1().hex[:6]}"
-        self.conn.sql("""CREATE TEMP TABLE {} AS SELECT * FROM df""".format(table_name))
+        self.conn.sql(
+            """
+            CREATE TEMP TABLE {} AS
+            SELECT * FROM scan_parquet([{}/*])
+            """.format(
+                table_name, prefix
+            )
+        )
 
         return self.conn.sql("SELECT * FROM {}".format(table_name)), table_name
 

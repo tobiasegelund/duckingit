@@ -123,7 +123,7 @@ def test_update_query(query, prefix, expected, planner):
     ],
 )
 def test_plan(query, expected, invokations, planner):
-    got = planner.plan(query=query, invokations=invokations)
+    got = planner.generate_plan(query=query, invokations=invokations)
 
     assert got == expected
 
@@ -133,7 +133,7 @@ def test_plan_error(planner):
 
     query = "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/*']) WHERE 1=1"
     try:
-        _ = planner.plan(query=query, invokations="1")
+        _ = planner.generate_plan(query=query, invokations="1")
     except WrongInvokationType:
         got = True
 

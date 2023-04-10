@@ -1,11 +1,10 @@
 import re
 import itertools
-import hashlib
 
 import duckdb
-import sqlglot
 
-from ._exceptions import WrongInvokationType, InvalidFilesystem, InvalidQueryFormat
+from ._exceptions import WrongInvokationType
+from ._parser import QueryParser
 
 
 class Planner:
@@ -22,7 +21,7 @@ class Planner:
 
     Methods:
         scan_bucket: Scans the URL for files, e.g. a bucket in S3
-        plan: Creates a query plan that divides the workload between nodes that can be
+        generate_plan: Creates a query plan that divides the workload between nodes that can be
             used by the Controller
     """
 
@@ -71,24 +70,6 @@ class Planner:
             for i in range(number_of_invokations)
         ]
 
-    def _find_key(self, query: str) -> str:
-        # TODO: Update exceptions to user-defined exceptions
-        scan_statements = sqlglot.parse_one(query).find_all(sqlglot.exp.Table)
-        scan_statement = next(scan_statements).sql()
-
-        # TODO: Update pattern for other filesystems or extensions
-        pattern = r"\(.*?(s3://[^/]+/.+(/\*|\.parquet|\*)).*?\)"
-        match = re.search(pattern, scan_statement)
-
-        if match is None:
-            # TODO: Validate that the prefix/file exists else raise Exception
-            raise InvalidFilesystem(
-                "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*' couldn't be \
-found. Did you try to run local files?"
-            )
-
-        return match.group(1)
-
     def _update_query(self, query: str, list_of_prefixes: list[str]) -> str:
         sub = f"read_parquet({list_of_prefixes})"
 
@@ -96,10 +77,10 @@ found. Did you try to run local files?"
 
         return query_upd
 
-    def plan(self, query: str, invokations: int | str) -> list[str]:
+    def generate_plan(self, query: str, invokations: int | str) -> list[str]:
         query = QueryParser.parse(query)
 
-        key = self._find_key(query)
+        key = QueryParser.find_key(query)
         list_of_prefixes = self.scan_bucket(prefix=key)
 
         if isinstance(invokations, str):
@@ -121,39 +102,6 @@ found. Did you try to run local files?"
             query_upd = self._update_query(query=query, list_of_prefixes=chunk)
             updated_queries.append(query_upd)
         return updated_queries
-
-
-class QueryParser:
-    """Class to unify queries
-
-    TODO:
-        - Validate that S3 etc. is in the query?
-        - Add date as column based on prefix?
-    """
-
-    @classmethod
-    def hash_query(cls, query: str) -> str:
-        return hashlib.md5(query.encode()).hexdigest()
-
-    @classmethod
-    def verify_query(cls, query: str) -> str:
-        try:
-            sqlglot.parse_one(query)
-        except Exception as e:
-            raise InvalidQueryFormat(e)
-        return query
-
-    @classmethod
-    def apply_lower_case(cls, query: str) -> str:
-        # TODO: Logic to make sure uppercase names are still in place
-        return query.lower()
-
-    @classmethod
-    def parse(cls, query: str) -> str:
-        query = cls.verify_query(query)
-        # query = cls.apply_lower_case(query)
-
-        return query
 
 
 # class Optimizer:

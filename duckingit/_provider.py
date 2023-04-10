@@ -4,9 +4,11 @@ from typing import Literal
 
 import boto3
 
+from ._parser import QueryParser
+
 
 class Provider:
-    def invoke(self, queries: list[str]) -> list[dict]:
+    def invoke(self, queries: list[str], prefix: str) -> None:
         raise NotImplementedError()
 
 
@@ -24,53 +26,57 @@ invokation_type parameter."
 
         self._client = boto3.client("lambda")
 
-    def invoke_sync(self, queries: list[str]) -> list[dict]:
-        output = list()
+    def invoke_sync(self, queries: list[str], prefix: str) -> None:
         for query in queries:
-            request_payload = json.dumps({"body": query})
-            result = self._invoke_lambda_sync(request_payload=request_payload)
-            output.append(result)
+            # TODO: Allow other naming options than just hashed
+            query_hashed = QueryParser.hash_query(query)
+            key = prefix + "/" + query_hashed
+            request_payload = json.dumps({"query": query, "key": key})
+            _ = self._invoke_lambda_sync(request_payload=request_payload)
 
-        return output
+    def invoke_async(self, queries: list[str], prefix: str):
+        asyncio.run(self._invoke_async(queries=queries, prefix=prefix))
 
-    def invoke_async(self, queries: list[str]) -> list[dict]:
-        return asyncio.run(self._invoke_async(queries=queries))
-
-    async def _invoke_async(self, queries: list[str]):
+    async def _invoke_async(self, queries: list[str], prefix: str) -> None:
         tasks = []
         for query in queries:
-            request_payload = json.dumps({"body": query})
+            query_hashed = QueryParser.hash_query(query)
+            key = prefix + "/" + query_hashed
+            request_payload = json.dumps({"query": query, "key": key})
 
             task = asyncio.create_task(self._invoke_lambda_async(request_payload))
             tasks.append(task)
         tasks_to_run = await asyncio.gather(*tasks)
         return tasks_to_run
 
-    def _invoke_lambda_sync(self, request_payload: str) -> dict:
+    def _invoke_lambda_sync(self, request_payload: str) -> None:
         resp = self._client.invoke(
             FunctionName=self.function_name,
             Payload=request_payload,
-            InvocationType="RequestResponse",
+            InvocationType="RequestResponse",  # Event
         )
 
         resp_payload = json.loads(resp["Payload"].read().decode("utf-8"))
-        self._handle_error(resp=resp_payload)
+        self._raise_error_if_no_success(response=resp_payload)
 
-        return resp_payload
-
-    async def _invoke_lambda_async(self, request_payload: str):
+    async def _invoke_lambda_async(self, request_payload: str) -> None:
         """Wrapper to make it async"""
-        return self._invoke_lambda_sync(request_payload=request_payload)
+        self._invoke_lambda_sync(request_payload=request_payload)
 
-    def invoke(self, queries: list[str]) -> list[dict]:
+    def invoke(self, queries: list[str], prefix: str) -> None:
         if self.invokation_type == "sync":
-            return self.invoke_sync(queries=queries)
-        return self.invoke_async(queries=queries)
+            self.invoke_sync(queries=queries, prefix=prefix)
+        self.invoke_async(queries=queries, prefix=prefix)
 
-    def _handle_error(self, resp: dict) -> None:
-        if "errorMessage" in resp.keys():
-            # TODO: Create user-defined exception
-            raise ValueError(f"{resp.get('errorMessage')}")
+    def _verify_invokations_have_completed(self):
+        """TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken"""
+        pass
+
+    def _raise_error_if_no_success(self, response: dict) -> None:
+        if response["statusCode"] not in [200, 202]:
+            raise ValueError(
+                f"{response.get('statusCode')}: {response.get('errorMessage')}"
+            )
 
 
 # from enum import Enum
