@@ -17,7 +17,7 @@ con.execute("SET home_directory='/opt/python'; LOAD httpfs;")
 
 
 def lambda_handler(event, context):
-    key = event["key"]  # key to write to in S3
+    key = event["key"]  # key to S3
     payload = event["query"]
 
     try:
@@ -26,7 +26,7 @@ def lambda_handler(event, context):
             COPY ({payload}) TO '{key}'
             """
         )
-        return {"statusCode": 200, "url": ""}
+        return {"statusCode": 200}
     except Exception as e:
         return {
             "statusCode": 400,
