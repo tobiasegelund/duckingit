@@ -63,3 +63,8 @@ def MockPlanner():
 @pytest.fixture
 def MockDuckSession():
     yield _MockDuckSession
+
+
+@pytest.fixture
+def MockLocalController():
+    yield _MockLocalController

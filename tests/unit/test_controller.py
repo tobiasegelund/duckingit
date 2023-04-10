@@ -6,6 +6,6 @@ from duckingit._provider import AWS
 
 
 @pytest.fixture
-def controller(MockAWS):
+def controller(MockAWS, MockLocalController):
     conn = duckdb.connect(":memory:")
-    yield LocalController(conn=conn, provider=MockAWS(function_name="TestFunc"))
+    yield MockLocalController(conn=conn, provider=MockAWS(function_name="TestFunc"))
