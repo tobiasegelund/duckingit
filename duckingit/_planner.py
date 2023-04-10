@@ -1,5 +1,6 @@
 import re
 import itertools
+import hashlib
 
 import duckdb
 import sqlglot
@@ -131,6 +132,10 @@ class QueryParser:
     """
 
     @classmethod
+    def hash_query(cls, query: str) -> str:
+        return hashlib.md5(query.encode()).hexdigest()
+
+    @classmethod
     def verify_query(cls, query: str) -> str:
         try:
             sqlglot.parse_one(query)
@@ -156,3 +161,11 @@ class QueryParser:
 
 #     def analyze_query(self, query: str):
 #         pass
+
+
+# from enum import Enum
+# class Format(Enum):
+#     PARQUET = "parquet"
+#     JSON = "json"
+#     ORC = "orc"
+#     AVRO = "avro"

@@ -2,19 +2,11 @@
 https://arrow.apache.org/docs/python/ipc.html
 """
 import uuid
-from enum import Enum
 
 import duckdb
 import pandas as pd
 
 from ._provider import Provider
-
-
-class Format(Enum):
-    PARQUET = "parquet"
-    JSON = "json"
-    ORC = "orc"
-    AVRO = "avro"
 
 
 class Controller:
@@ -32,6 +24,8 @@ class LocalController(Controller):
     TODO:
         - Incorporate cache functionality to minimize compute power.
     """
+
+    _cache_prefix = ".cache/duckingit/"
 
     def __init__(self, conn: duckdb.DuckDBPyConnection, provider: Provider) -> None:
         self.conn = conn

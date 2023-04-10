@@ -8,7 +8,7 @@ from ._provider import AWS
 
 
 class DuckSession:
-    """Entrypoint to the session of DuckDB instances
+    """Entrypoint to a session of serverless DuckDB instances
 
     The main objective of this class is to handle the session and serve as the primary
     entrypoint to a cluster of serverless functions that utilize DuckDB. Its core
@@ -22,6 +22,11 @@ class DuckSession:
     Methods:
         execute: Execute a DuckDB SQL query concurrently using X number of invokations
 
+
+    Usage:
+        >>> session = DuckSession()
+        >>> resp = session.execute(query="SELECT * FROM <TABLE>")
+        >>> resp.show()
     """
 
     def __init__(
@@ -30,10 +35,11 @@ class DuckSession:
         # controller_function: str = "DuckController",
         duckdb_config: dict = {"database": ":memory:", "read_only": False},
         invokations_default: int | str = "auto",
+        enable_cache: bool = True,
         # format: str = "parquet",
         **kwargs,
     ) -> None:
-        """Initiliaze a session
+        """Initiliaze a session of serverless DuckDB instances
 
         Args:
             function_name, str: The name of the serverless function
@@ -43,10 +49,13 @@ class DuckSession:
                 Defaults to {"database": ":memory:", "read_only": False}
             invokations_default, int | 'auto': The default number of invokations.
                 Defaults to 'auto'
+            enable_cache, bool: Cache output on server-side, i.e. in a S3 Bucket
+                Defaults to True
             **kwargs
         """
         self._function_name = function_name
         self._invokations_default = invokations_default
+        self._enable_cache = enable_cache
         # self.format = format
         self._kwargs = kwargs
 
