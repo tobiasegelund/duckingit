@@ -24,6 +24,16 @@ module "lambda_function" {
   lambda_layer_arn = module.lambda_layer.lambda_layer_arn
 
   runtime     = "python3.9"
-  timeout     = 30
-  memory_size = 128
+  timeout     = var.timeout
+  memory_size = var.memory_size
+}
+
+variable "timeout" {
+  type    = number
+  default = 30
+}
+
+variable "memory_size" {
+  type    = number
+  default = 128
 }
