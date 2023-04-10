@@ -10,7 +10,7 @@ from ._provider import Provider
 
 class Controller:
     def execute(
-        self, queries: list[str], bucket_name: str, query_hash: str
+        self, queries: list[str], prefix: str
     ) -> tuple[duckdb.DuckDBPyRelation, str]:
         raise NotImplementedError()
 
@@ -35,9 +35,6 @@ class LocalController(Controller):
     def _scan_cached_data(self, query_hash: str):
         pass
 
-    def _create_prefix(self, bucket_name: str, query_hash: str) -> str:
-        return f"{bucket_name}/{self._CACHE_PREFIX}/{query_hash}"
-
     def _create_tmp_table_name(self) -> str:
         return f"__duckingit_{uuid.uuid1().hex[:6]}"
 
@@ -51,9 +48,8 @@ class LocalController(Controller):
         )
 
     def execute(
-        self, queries: list[str], bucket_name: str, query_hash: str
+        self, queries: list[str], prefix: str
     ) -> tuple[duckdb.DuckDBPyRelation, str]:
-        prefix = self._create_prefix(bucket_name=bucket_name, query_hash=query_hash)
         self.provider.invoke(queries=queries, prefix=prefix)
 
         table_name = self._create_tmp_table_name()

@@ -30,13 +30,14 @@ class DuckSession:
         >>> resp.show()
     """
 
+    _CACHE_PREFIX = ".cache/duckingit"
+
     def __init__(
         self,
         function_name: str = "DuckExecutor",
         # controller_function: str = "DuckController",
         duckdb_config: dict = {"database": ":memory:", "read_only": False},
         invokations_default: int | str = "auto",
-        enable_cache: bool = True,
         # format: str = "parquet",
         **kwargs,
     ) -> None:
@@ -50,13 +51,10 @@ class DuckSession:
                 Defaults to {"database": ":memory:", "read_only": False}
             invokations_default, int | 'auto': The default number of invokations.
                 Defaults to 'auto'
-            enable_cache, bool: Cache output on server-side, i.e. in a S3 Bucket
-                Defaults to True
             **kwargs
         """
         self._function_name = function_name
         self._invokations_default = invokations_default
-        self._enable_cache = enable_cache
         # self.format = format
         self._kwargs = kwargs
 
@@ -106,6 +104,15 @@ class DuckSession:
 
         return list_of_queries
 
+    def _create_prefix(
+        self, bucket_name: str, query_hash: str, write_to: str | None
+    ) -> str:
+        if write_to is not None:
+            if write_to[-1] != "/":
+                return write_to
+            return write_to[:-1]
+        return f"{bucket_name}/{self._CACHE_PREFIX}/{query_hash}"
+
     def execute(
         self, query: str, *, invokations: int | None = None, write_to: str | None = None
     ) -> duckdb.DuckDBPyRelation:
@@ -116,7 +123,7 @@ class DuckSession:
                 Defaults to create a new Lambda function
             invokations, int | None:
                 Defaults to 'auto' (See initialization of the session class)
-            write_to, str | None:
+            write_to, str | None: The prefix to write to. E.g. 's3://BUCKET_NAME/2023/01'
         """
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
@@ -125,12 +132,15 @@ class DuckSession:
         execution_plan = self._create_execution_plan(
             query=query, invokations=number_of_invokations
         )
-
         query_hashed = QueryParser.hash_query(query=query)
         bucket_name = QueryParser.find_bucket(query=query)
 
+        prefix = self._create_prefix(
+            bucket_name=bucket_name, query_hash=query_hashed, write_to=write_to
+        )
+
         duckdb_obj, table_name = self._controller.execute(
-            queries=execution_plan, bucket_name=bucket_name, query_hash=query_hashed
+            queries=execution_plan, prefix=prefix
         )
 
         # Update metadata

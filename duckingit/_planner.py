@@ -32,7 +32,7 @@ class Planner:
         """Scans the URL for files, e.g. a S3 bucket
 
         Usage:
-            Planner(conn=conn).scan_bucket(key="s3::/<BUCKET_NAME>/*")
+            Planner(conn=conn).scan_bucket(key="s3://<BUCKET_NAME>/*")
         """
         if prefix[-1] != "*":
             return [prefix]
