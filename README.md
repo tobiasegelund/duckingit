@@ -5,6 +5,12 @@ Please note that the framework currently supports only AWS Lambda functions. To 
 
 While Apache Spark can perform similar (and more advanced) functions, the cost of running Spark clusters can be prohibitively expensive. As a result, a much more affordable alternative is to use a cluster of serverless functions, such as Lambda functions, to perform the same actions as Spark, without the need to turn them off manually.
 
+## Installation
+To install the Python SDK from PyPI by executing the command below. Nonetheless, it's recommended that you first review the [setup](/README.md#setup) section in order to properly utilize the package.
+
+```bash
+pip install duckingit
+```
 
 ## Setup
 ... Coming up
