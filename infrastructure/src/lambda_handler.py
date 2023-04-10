@@ -20,12 +20,12 @@ def lambda_handler(event, context):
     key = event["key"]  # key to write to in S3
     payload = event["query"]
 
-    data = con.sql(
-        f"""
-        COPY ({payload}) TO '{key}'
-        """
-    )
     try:
+        con.sql(
+            f"""
+            COPY ({payload}) TO '{key}'
+            """
+        )
         return {"statusCode": 200, "url": ""}
     except Exception as e:
         return {
