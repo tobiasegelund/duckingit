@@ -6,14 +6,33 @@ Please note that the framework currently supports only AWS Lambda functions. To 
 While Apache Spark can perform similar (and more advanced) functions, the cost of running Spark clusters can be prohibitively expensive. As a result, a much more affordable alternative is to use a cluster of serverless functions, such as Lambda functions, to perform the same actions as Spark, without the need to turn them off manually.
 
 ## Installation
-To install the Python SDK from PyPI by executing the command below. Nonetheless, it's recommended that you first review the [setup](/README.md#setup) section in order to properly utilize the package.
+To install the Python SDK from PyPI execute the command below. Nonetheless, it's recommended that you first review the [setup](/README.md#setup) section in order to properly utilize the package.
 
 ```bash
 pip install duckingit
 ```
 
 ## Setup
-... Coming up
+Please ensure that you have both Docker and Terraform installed before setting up the infrastructure.
+
+The SDK acts as a gateway to the serverless function cluster, so the entire infrastructure must be set up before executing any commands on the DuckDB instances.
+
+AWS Lambda employs layers to handle pre-installed packages, and DuckDB is no exception. To make the installed binaries work on AWS Lambda, Docker must be installed because the layer is built on the same architecture that runs on AWS Lambda.
+
+The first step is to create the DuckDB layer. Running the following command will produce a duckdb-layer.zip file in the image/release/ folder:
+```bash
+make release-image
+```
+
+To proceed with setting up the infrastructure on AWS, you need to have Terraform installed. Follow these commands:
+```bash
+make tf-init
+make tf-apply
+```
+
+After waiting for a minute or two, the process should be complete. You can now check for the presence of a Lambda function called DuckExecutor and a lambda layer called duckdb under Lambda layers.
+
+Once you have verified the above components, the infrastructure should be set up and fully operational.
 
 ## Usage
 ... Coming up

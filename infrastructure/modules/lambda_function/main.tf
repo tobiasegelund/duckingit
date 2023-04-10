@@ -41,7 +41,7 @@ resource "aws_lambda_function" "this" {
   timeout       = var.timeout
   memory_size   = var.memory_size
 
-  layers = []
+  layers = [var.lambda_layer_arn]
 
   ephemeral_storage {
     size = 512

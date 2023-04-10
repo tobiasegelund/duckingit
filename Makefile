@@ -28,16 +28,16 @@ enter-image:
 		--rm \
 		duckdb
 
-init-tf:
+tf-init:
 	cd infrastructure && terraform init
 
-plan-tf:
+tf-plan:
 	cd infrastructure && terraform plan
 
-apply-tf:
+tf-apply:
 	cd infrastructure && terraform apply -auto-approve
 
-destroy-tf:
+tf-destroy:
 	cd infrastructure && terraform apply -auto-approve
 
 build-package:
