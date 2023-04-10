@@ -13,24 +13,22 @@ pip install duckingit
 ```
 
 ## Setup
-Please ensure that you have both Docker and Terraform installed before setting up the infrastructure.
+Before setting up the infrastructure, please make sure that you have installed both Docker and Terraform.
 
-The SDK acts as a gateway to the serverless function cluster, so the entire infrastructure must be set up before executing any commands on the DuckDB instances.
+To interact with the DuckDB instances, the entire infrastructure must be set up first because the SDK functions as an entryway to the serverless function cluster. DuckDB is packaged as a layer to be pre-installed in AWS Lambda, similar to other packages. Docker must be installed to create the layer.
 
-AWS Lambda employs layers to handle pre-installed packages, and DuckDB is no exception. To make the installed binaries work on AWS Lambda, Docker must be installed because the layer is built on the same architecture that runs on AWS Lambda.
-
-The first step is to create the DuckDB layer. Running the following command will produce a duckdb-layer.zip file in the image/release/ folder:
+Running the command below will generate a duckdb-layer.zip file in the image/release/ folder:
 ```bash
 make release-image
 ```
 
-To proceed with setting up the infrastructure on AWS, you need to have Terraform installed. Follow these commands:
+To set up the infrastructure on AWS, follow the commands below:
 ```bash
 make tf-init
 make tf-apply
 ```
 
-After waiting for a minute or two, the process should be complete. You can now check for the presence of a Lambda function called DuckExecutor and a lambda layer called duckdb under Lambda layers.
+After waiting for a minute or two, the infrastructure should be set up, and you can check for the presence of a Lambda function called DuckExecutor and a lambda layer called duckdb under Lambda layers.
 
 Once you have verified the above components, the infrastructure should be set up and fully operational.
 
