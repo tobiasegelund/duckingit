@@ -3,3 +3,6 @@
 pytest
 black
 flake8
+build
+wheel
+twine
