@@ -5,6 +5,7 @@ from typing import Literal
 import boto3
 
 from ._parser import QueryParser
+from ._exceptions import MisConfigurationError
 
 
 class Provider:
@@ -73,10 +74,13 @@ invokation_type parameter."
         pass
 
     def _raise_error_if_no_success(self, response: dict) -> None:
-        if response["statusCode"] not in [200, 202]:
-            raise ValueError(
-                f"{response.get('statusCode')}: {response.get('errorMessage')}"
-            )
+        try:
+            if response["statusCode"] not in [200, 202]:
+                raise ValueError(
+                    f"{response.get('statusCode')}: {response.get('errorMessage')}"
+                )
+        except KeyError as err:
+            raise MisConfigurationError(response)
 
 
 # from enum import Enum

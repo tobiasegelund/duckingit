@@ -8,3 +8,7 @@ class InvalidFilesystem(Exception):
 
 class InvalidQueryFormat(Exception):
     pass
+
+
+class MisConfigurationError(Exception):
+    pass
