@@ -29,12 +29,14 @@ class _MockPlanner(Planner):
 
 
 class _MockLocalController(LocalController):
+    _mock_tmp_name = "tmp1"
+
     def _create_tmp_table_name(self) -> str:
-        return "tmp1"
+        return self._mock_tmp_name
 
     def _create_tmp_table(self, table_name: str, prefix: str) -> None:
         self.conn.sql(
-            "CREATE TEMP TABLE tmp1 AS (SELECT * FROM 'tests/unit/data/test_data.parquet')"
+            f"CREATE TEMP TABLE {self._mock_tmp_name} AS (SELECT * FROM 'tests/unit/data/test_data.parquet')"
         )
 
 
