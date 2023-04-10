@@ -2,6 +2,8 @@ import json
 import asyncio
 from typing import Literal
 
+# from enum import Enum
+
 import boto3
 
 from ._parser import QueryParser
@@ -79,11 +81,9 @@ invokation_type parameter."
                 raise ValueError(
                     f"{response.get('statusCode')}: {response.get('errorMessage')}"
                 )
-        except KeyError as err:
+        except KeyError as _:
             raise MisConfigurationError(response)
 
-
-# from enum import Enum
 
 # class GCP:
 #     pass
