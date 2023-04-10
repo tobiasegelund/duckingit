@@ -28,7 +28,7 @@ class Planner:
     def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
         self.conn = conn
 
-    def scan_bucket(self, prefix: str) -> list[str]:
+    def _scan_bucket(self, prefix: str) -> list[str]:
         """Scans the URL for files, e.g. a S3 bucket
 
         Usage:
@@ -81,7 +81,7 @@ class Planner:
         query = QueryParser.parse(query)
 
         key = QueryParser.find_key(query)
-        list_of_prefixes = self.scan_bucket(prefix=key)
+        list_of_prefixes = self._scan_bucket(prefix=key)
 
         if isinstance(invokations, str):
             if invokations != "auto":
@@ -115,5 +115,6 @@ class Planner:
 # class Format(Enum):
 #     PARQUET = "parquet"
 #     JSON = "json"
+#     CSV = "csv"
 #     ORC = "orc"
 #     AVRO = "avro"
