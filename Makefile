@@ -1,4 +1,5 @@
 release-image: build-image copy-image
+release-infra: tf-init tf-apply
 
 test-unit:
 	pytest tests/unit -s

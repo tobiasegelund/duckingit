@@ -24,8 +24,7 @@ make release-image
 
 To set up the infrastructure on AWS, follow the commands below:
 ```bash
-make tf-init
-make tf-apply
+make release-infra
 ```
 
 After waiting for a minute or two, the infrastructure should be set up, and you can check for the presence of a Lambda function called DuckExecutor and a lambda layer called duckdb under Lambda layers.
