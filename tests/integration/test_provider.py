@@ -1,11 +1,11 @@
-import pytest
+# import pytest
 
-from duckingit._provider import AWS
+# from duckingit._provider import AWS
 
 
-@pytest.fixture
-def mockAWS(MockAWS):
-    yield MockAWS(function_name="TestFunc")
+# @pytest.fixture
+# def mockAWS(MockAWS):
+#     yield MockAWS(function_name="TestFunc")
 
 
 # @pytest.mark.parametrize("method", [("invoke_sync"), ("invoke_async")])
