@@ -65,3 +65,24 @@ def test_find_bucket(query, expected):
     got = QueryParser.find_bucket(query=query)
 
     assert got == expected
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("SELECT * FROM\n TABLE", "SELECT * FROM TABLE"),
+        ("SELECT\t\t * FROM TABLE", "SELECT * FROM TABLE"),
+        (
+            """
+        SELECT *
+        FROM TABLE
+        WHERE 1=1
+        """,
+            "SELECT * FROM TABLE WHERE 1=1",
+        ),
+    ],
+)
+def test_remove_newlines_and_tabs(query, expected):
+    got = QueryParser.remove_newlines_and_tabs(query=query)
+
+    assert got == expected

@@ -56,6 +56,10 @@ found. Did you try to run local files?"
         return query
 
     @classmethod
+    def remove_newlines_and_tabs(cls, query: str) -> str:
+        return " ".join(query.split())
+
+    @classmethod
     def apply_lower_case(cls, query: str) -> str:
         # TODO: Logic to make sure uppercase names are still in place
         return query.lower()
@@ -63,6 +67,7 @@ found. Did you try to run local files?"
     @classmethod
     def parse(cls, query: str) -> str:
         query = cls.verify_query(query)
+        query = cls.remove_newlines_and_tabs(query)
         # query = cls.apply_lower_case(query)
 
         return query
