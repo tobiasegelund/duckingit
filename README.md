@@ -38,7 +38,11 @@ Once you have verified the above components, the infrastructure should be set up
 ... Coming up
 
 ## Contribution
-... Coming up
+Thank you for taking an interest in my project on GitHub. I am always looking for new contributors to help me improve and evolve my codebase. If you're interested in contributing, feel free to fork the repository and submit a pull request with your changes.
+
+I welcome all kinds of contributions, from bug fixes to feature additions and documentation improvements. If you're not sure where to start, take a look at the issues tab or reach out to us for guidance.
+
+Let's collaborate and make our project better together!
 
 
 ___________________________________
