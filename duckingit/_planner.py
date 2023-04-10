@@ -20,7 +20,6 @@ class Planner:
         conn, duckdb.DuckDBPyConnection: Local DuckDB connection
 
     Methods:
-        scan_bucket: Scans the URL for files, e.g. a bucket in S3
         generate_plan: Creates a query plan that divides the workload between nodes that can be
             used by the Controller
     """
