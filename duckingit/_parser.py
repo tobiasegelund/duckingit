@@ -39,7 +39,6 @@ class QueryParser:
         match = re.search(pattern, scan_statement)
 
         if match is None:
-            # TODO: Validate that the prefix/file exists else raise Exception
             raise InvalidFilesystem(
                 "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*', couldn't be \
 found."

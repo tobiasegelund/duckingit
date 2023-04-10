@@ -72,8 +72,8 @@ invokation_type parameter."
         self.invoke_async(queries=queries, prefix=prefix)
 
     def _verify_invokations_have_completed(self):
-        """TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken"""
-        pass
+        # TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken
+        raise NotImplementedError()
 
     def _raise_error_if_no_success(self, response: dict) -> None:
         try:
