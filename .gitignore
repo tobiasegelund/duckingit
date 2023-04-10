@@ -153,3 +153,4 @@ TODO.md
 *.tfstate
 *.lock.hcl
 *.terraform
+*.backup

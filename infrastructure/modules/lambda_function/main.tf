@@ -35,7 +35,7 @@ resource "aws_lambda_function" "this" {
   function_name = "DuckExecutor"
   filename      = "${var.src}/lambda_handler.zip"
   architectures = ["x86_64"]
-  handler       = "index.lambda_handler"
+  handler       = "lambda_handler.lambda_handler"
   role          = aws_iam_role.this.arn
   runtime       = var.runtime
   timeout       = var.timeout
