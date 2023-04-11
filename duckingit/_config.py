@@ -9,13 +9,13 @@ class LambdaConfig:
         self._provider = AWS(function_name=self.function_name)
 
     def _change_memory_size(self, memory_size: int) -> None:
-        if memory_size < 128 or memory_size > 10240:
-            raise ValueError("Memory size must between 128 or 10240 MB")
+        if memory_size < 128 or memory_size > 10_240:
+            raise ValueError("Memory size must be between 128 or 10,240 MB")
         self._configs["MemorySize"] = memory_size
 
     def _change_timeout(self, timeout: int) -> None:
         if timeout < 3 or timeout > 900:
-            raise ValueError("Timeout must between 3 or 900 seconds")
+            raise ValueError("Timeout must be between 3 or 900 seconds")
         self._configs["Timeout"] = timeout
 
     def update(self) -> None:
@@ -39,4 +39,4 @@ class DuckConfig:
         return self
 
     def update(self):
-        return self._lambda_config.update()
+        self._lambda_config.update()
