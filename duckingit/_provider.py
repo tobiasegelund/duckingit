@@ -29,6 +29,14 @@ invokation_type parameter."
 
         self._client = boto3.client("lambda")
 
+    def varm_the_function(self) -> None:
+        """Method to avoid cold starts"""
+        _ = self._client.invoke(
+            FunctionName=self.function_name,
+            Payload=json.dumps({"WARMUP": 1}),
+            InvocationType="RequestResponse",
+        )
+
     def invoke_sync(self, queries: list[str], prefix: str) -> None:
         for query in queries:
             # TODO: Allow other naming options than just hashed

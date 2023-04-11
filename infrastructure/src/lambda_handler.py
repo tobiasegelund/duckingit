@@ -17,6 +17,12 @@ con.execute("SET home_directory='/opt/python'; LOAD httpfs;")
 
 
 def lambda_handler(event, context):
+    try:
+        if event["WARMUP"] == 1:
+            return
+    except KeyError:
+        pass
+
     key = event["key"]  # key to S3
     payload = event["query"]
 
