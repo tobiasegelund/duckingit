@@ -16,6 +16,8 @@ class Query:
     expression: expr.Expression
     dag: planner.Plan
 
+    _list_of_prefixes: list[str] | None = None
+
     @classmethod
     def parse(cls, query: str):
         query = cls._unify_query(query)
@@ -29,6 +31,18 @@ class Query:
             expression=expression,
             dag=dag,
         )
+
+    @property
+    def list_of_prefixes(self) -> list[str]:
+        if self._list_of_prefixes is None:
+            return [self.source]
+        return self._list_of_prefixes
+
+    @list_of_prefixes.setter
+    def list_of_prefixes(self, prefixes: list[str]) -> None:
+        if not isinstance(prefixes, list):
+            raise ValueError(f"{prefixes} must be a list of strings")
+        self._list_of_prefixes = prefixes
 
     @property
     def bucket(self) -> str:
