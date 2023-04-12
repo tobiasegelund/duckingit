@@ -18,8 +18,18 @@ class LambdaConfig:
             raise ValueError("Timeout must be between 3 or 900 seconds")
         self._configs["Timeout"] = timeout
 
+    def _warm_up(self) -> None:
+        self._configs["WARMUP"] = True
+
     def update(self) -> None:
+        warm_up = False
+        if "WARMUP" in self._configs:
+            warm_up = self._configs.pop("WARMUP")
+
         self._provider._update_configurations(configs=self._configs)
+
+        if warm_up:
+            self._provider.warm_up_function()
 
 
 class DuckConfig:
@@ -36,6 +46,10 @@ class DuckConfig:
 
     def timeout(self, timeout: int):
         self._lambda_config._change_timeout(timeout=timeout)
+        return self
+
+    def warm_up(self):
+        self._lambda_config._warm_up()
         return self
 
     def update(self):
