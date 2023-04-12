@@ -18,8 +18,7 @@ class Query:
 
     @classmethod
     def parse(cls, query: str):
-        cls._verify_query(query)
-        query = cls._remove_newlines_and_tabs(query)
+        query = cls._unify_query(query)
 
         expression = sqlglot.parse_one(query)
         dag = planner.Plan(expression)
@@ -60,12 +59,8 @@ found."
         return match.group(1)
 
     @classmethod
-    def _verify_query(cls, query: str) -> None:
+    def _unify_query(cls, query: str) -> str:
         try:
-            query = sqlglot.transpile(query, read="duckdb")[0]
+            return sqlglot.transpile(query, read="duckdb")[0]
         except Exception as e:
             raise ParserError(e)
-
-    @classmethod
-    def _remove_newlines_and_tabs(cls, query: str) -> str:
-        return " ".join(query.split())
