@@ -3,9 +3,10 @@ import os
 import duckdb
 
 from ._controller import Controller, LocalController
-from ._planner import Planner
+from ._planner import Plan, Step
 from ._parser import Query
 from ._provider import AWS
+from ._analyze import scan_bucket
 
 
 class DuckSession:
@@ -65,7 +66,6 @@ class DuckSession:
         self._set_credentials()
 
         self._controller = self._set_controller()
-        self._planner = self._set_planner()
 
         self._metadata: dict[str, str] = dict()
 
@@ -76,9 +76,6 @@ class DuckSession:
     @property
     def conn(self) -> duckdb.DuckDBPyConnection:
         return self._conn
-
-    def _set_planner(self) -> Planner:
-        return Planner(conn=self._conn)
 
     def _set_controller(self) -> Controller:
         return LocalController(
@@ -101,13 +98,6 @@ class DuckSession:
             """
         )
 
-    def _create_execution_plan(self, query: Query, invokations: int | str) -> list[str]:
-        list_of_queries = self._planner.generate_plan(
-            query=query, invokations=invokations
-        )
-
-        return list_of_queries
-
     def _create_prefix(self, query: Query, write_to: str | None) -> str:
         if write_to is not None:
             if write_to[-1] != "/":
@@ -128,17 +118,18 @@ class DuckSession:
                 Defaults to .cache/duckingit/ prefix
         """
         query_parsed: Query = Query.parse(query)
+        query_parsed.list_of_prefixes = scan_bucket(query_parsed.bucket, conn=self.conn)
 
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
         )
-        execution_plan = self._create_execution_plan(
+        execution_plan = Plan.create_from_query(
             query=query_parsed, invokations=number_of_invokations
         )
 
         prefix = self._create_prefix(query=query_parsed, write_to=write_to)
         duckdb_obj, table_name = self._controller.execute(
-            queries=execution_plan, prefix=prefix
+            execution_plan=execution_plan, prefix=prefix
         )
 
         # Update metadata

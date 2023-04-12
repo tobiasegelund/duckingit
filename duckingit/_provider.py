@@ -8,10 +8,11 @@ import boto3
 
 from ._exceptions import MisConfigurationError
 from ._encode import create_md5_hash_string
+from ._planner import Step
 
 
 class Provider:
-    def invoke(self, queries: list[str], prefix: str) -> None:
+    def invoke(self, execution_steps: list[Step], prefix: str) -> None:
         raise NotImplementedError()
 
 
@@ -37,23 +38,21 @@ invokation_type parameter."
             InvocationType="RequestResponse",
         )
 
-    def invoke_sync(self, queries: list[str], prefix: str) -> None:
-        for query in queries:
+    def invoke_sync(self, execution_steps: list[Step], prefix: str) -> None:
+        for step in execution_steps:
             # TODO: Allow other naming options than just hashed
-            query_hashed = create_md5_hash_string(query)
-            key = prefix + "/" + query_hashed + ".parquet"
-            request_payload = json.dumps({"query": query, "key": key})
+            key = prefix + "/" + step.subquery_hashed + ".parquet"
+            request_payload = json.dumps({"query": step.subquery, "key": key})
             _ = self._invoke_lambda_sync(request_payload=request_payload)
 
-    def invoke_async(self, queries: list[str], prefix: str):
-        asyncio.run(self._invoke_async(queries=queries, prefix=prefix))
+    def invoke_async(self, execution_steps: list[Step], prefix: str):
+        asyncio.run(self._invoke_async(execution_steps=execution_steps, prefix=prefix))
 
-    async def _invoke_async(self, queries: list[str], prefix: str) -> None:
+    async def _invoke_async(self, execution_steps: list[Step], prefix: str) -> None:
         tasks = []
-        for query in queries:
-            query_hashed = create_md5_hash_string(query)
-            key = prefix + "/" + query_hashed + ".parquet"
-            request_payload = json.dumps({"query": query, "key": key})
+        for step in execution_steps:
+            key = prefix + "/" + step.subquery_hashed + ".parquet"
+            request_payload = json.dumps({"query": step.subquery, "key": key})
 
             task = asyncio.create_task(self._invoke_lambda_async(request_payload))
             tasks.append(task)
@@ -74,10 +73,10 @@ invokation_type parameter."
         """Wrapper to make it async"""
         self._invoke_lambda_sync(request_payload=request_payload)
 
-    def invoke(self, queries: list[str], prefix: str) -> None:
+    def invoke(self, execution_steps: list[Step], prefix: str) -> None:
         if self.invokation_type == "sync":
-            self.invoke_sync(queries=queries, prefix=prefix)
-        self.invoke_async(queries=queries, prefix=prefix)
+            self.invoke_sync(execution_steps=execution_steps, prefix=prefix)
+        self.invoke_async(execution_steps=execution_steps, prefix=prefix)
 
     def _verify_invokations_have_completed(self):
         # TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken

@@ -32,3 +32,15 @@ def scan_bucket(bucket: str, conn: duckdb.DuckDBPyConnection) -> list[str]:
 
 def flatten_list(_list: list) -> list:
     return list(itertools.chain(*_list))
+
+
+def split_list_in_chunks(_list: list[str], number_of_invokations: int) -> list[list]:
+    # Must not invoke more functions than number of search queries
+    if (size := len(_list)) < number_of_invokations:
+        number_of_invokations = size
+
+    k, m = divmod(len(_list), number_of_invokations)
+    return [
+        _list[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
+        for i in range(number_of_invokations)
+    ]

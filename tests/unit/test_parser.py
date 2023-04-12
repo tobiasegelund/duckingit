@@ -10,23 +10,23 @@ from duckingit._parser import Query
     [
         (
             "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet'])",
-            "s3://<BUCKET_NAME>/2023/02/test2.parquet",
+            "'s3://<BUCKET_NAME>/2023/02/test2.parquet'",
         ),
         (
             "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
-            "s3://<BUCKET_NAME>/2023/02/test2.parquet",
+            "'s3://<BUCKET_NAME>/2023/02/test2.parquet'",
         ),
         (
             "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/02/test2.parquet']) WHERE 1=1",
-            "s3://<BUCKET_NAME>/2023/02/test2.parquet",
+            "'s3://<BUCKET_NAME>/2023/02/test2.parquet'",
         ),
         (
             "SELECT * FROM scan_parquet(['s3://<BUCKET_NAME>/2023/01/*'], filename=true)",
-            "s3://<BUCKET_NAME>/2023/01/*",
+            "'s3://<BUCKET_NAME>/2023/01/*'",
         ),
         (
             "SELECT * FROM read_parquet(['s3://<BUCKET_NAME>/2023/01/*'], filename=true)",
-            "s3://<BUCKET_NAME>/2023/01/*",
+            "'s3://<BUCKET_NAME>/2023/01/*'",
         ),
     ],
 )

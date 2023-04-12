@@ -6,11 +6,12 @@ import uuid
 import duckdb
 
 from ._provider import Provider
+from ._planner import Plan, Step
 
 
 class Controller:
     def execute(
-        self, queries: list[str], prefix: str
+        self, execution_plan: Plan, prefix: str
     ) -> tuple[duckdb.DuckDBPyRelation, str]:
         raise NotImplementedError()
 
@@ -53,10 +54,12 @@ class LocalController(Controller):
 
     def execute(
         self,
-        queries: list[str],
+        execution_plan: Plan,
         prefix: str,
     ) -> tuple[duckdb.DuckDBPyRelation, str]:
-        self.provider.invoke(queries=queries, prefix=prefix)
+        self.provider.invoke(
+            execution_steps=execution_plan.execution_steps, prefix=prefix
+        )
 
         if self.enable_cache:
             table_name = self._create_tmp_table_name()
