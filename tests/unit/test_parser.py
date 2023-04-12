@@ -2,7 +2,7 @@ import duckdb
 import pytest
 
 # from duckingit._exceptions import WrongInvokationType
-from duckingit._parser import QueryParser
+from duckingit._parser import Query
 
 
 @pytest.mark.parametrize(
@@ -30,8 +30,8 @@ from duckingit._parser import QueryParser
         ),
     ],
 )
-def test_find_key(query, expected):
-    got = QueryParser.find_key(query=query)
+def test_source(query, expected):
+    got = Query.parse(query).source
 
     assert got == expected
 
@@ -61,8 +61,8 @@ def test_find_key(query, expected):
         ),
     ],
 )
-def test_find_bucket(query, expected):
-    got = QueryParser.find_bucket(query=query)
+def test_bucket(query, expected):
+    got = Query.parse(query).bucket
 
     assert got == expected
 
@@ -83,6 +83,6 @@ def test_find_bucket(query, expected):
     ],
 )
 def test_remove_newlines_and_tabs(query, expected):
-    got = QueryParser.remove_newlines_and_tabs(query=query)
+    got = Query.parse(query=query).sql
 
     assert got == expected

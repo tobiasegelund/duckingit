@@ -26,8 +26,6 @@ class LocalController(Controller):
         - Incorporate cache functionality to minimize compute power.
     """
 
-    _CACHE_PREFIX = ".cache/duckingit"
-
     def __init__(
         self,
         conn: duckdb.DuckDBPyConnection,

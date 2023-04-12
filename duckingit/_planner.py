@@ -4,7 +4,7 @@ import itertools
 import duckdb
 
 from ._exceptions import WrongInvokationType
-from ._parser import QueryParser
+from ._parser import Query
 
 
 class Planner:
@@ -70,17 +70,14 @@ class Planner:
         ]
 
     def _update_query(self, query: str, list_of_prefixes: list[str]) -> str:
-        sub = f"read_parquet({list_of_prefixes})"
+        sub = f"READ_PARQUET({list_of_prefixes})"
 
-        query_upd = re.sub(r"(?:scan|read)_parquet\([^)]*\)", sub, query)
+        query_upd = re.sub(r"(?:SCAN|READ)_PARQUET\([^)]*\)", sub, query)
 
         return query_upd
 
-    def generate_plan(self, query: str, invokations: int | str) -> list[str]:
-        query = QueryParser.parse(query)
-
-        key = QueryParser.find_key(query)
-        list_of_prefixes = self._scan_bucket(prefix=key)
+    def generate_plan(self, query: Query, invokations: int | str) -> list[str]:
+        list_of_prefixes = self._scan_bucket(prefix=query.bucket)
 
         if isinstance(invokations, str):
             if invokations != "auto":
@@ -98,7 +95,7 @@ class Planner:
 
         updated_queries = list()
         for chunk in list_of_chunks_of_prefixes:
-            query_upd = self._update_query(query=query, list_of_prefixes=chunk)
+            query_upd = self._update_query(query=query.sql, list_of_prefixes=chunk)
             updated_queries.append(query_upd)
         return updated_queries
 

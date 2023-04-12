@@ -1,6 +1,6 @@
 import pytest
 
-from duckingit._exceptions import InvalidQueryFormat
+from duckingit._exceptions import ParserError
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def test_DuckSession_query_error(query, session):
 
     try:
         _ = session.execute(query=query)
-    except InvalidQueryFormat:
+    except ParserError:
         got = True
 
     assert got

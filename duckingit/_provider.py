@@ -6,8 +6,8 @@ from typing import Literal
 
 import boto3
 
-from ._parser import QueryParser
 from ._exceptions import MisConfigurationError
+from ._encode import create_md5_hash_string
 
 
 class Provider:
@@ -29,7 +29,7 @@ invokation_type parameter."
 
         self._client = boto3.client("lambda")
 
-    def varm_the_function(self) -> None:
+    def warm_up_function(self) -> None:
         """Method to avoid cold starts"""
         _ = self._client.invoke(
             FunctionName=self.function_name,
@@ -40,7 +40,7 @@ invokation_type parameter."
     def invoke_sync(self, queries: list[str], prefix: str) -> None:
         for query in queries:
             # TODO: Allow other naming options than just hashed
-            query_hashed = QueryParser.hash_query(query)
+            query_hashed = create_md5_hash_string(query)
             key = prefix + "/" + query_hashed + ".parquet"
             request_payload = json.dumps({"query": query, "key": key})
             _ = self._invoke_lambda_sync(request_payload=request_payload)
@@ -51,7 +51,7 @@ invokation_type parameter."
     async def _invoke_async(self, queries: list[str], prefix: str) -> None:
         tasks = []
         for query in queries:
-            query_hashed = QueryParser.hash_query(query)
+            query_hashed = create_md5_hash_string(query)
             key = prefix + "/" + query_hashed + ".parquet"
             request_payload = json.dumps({"query": query, "key": key})
 

@@ -4,7 +4,7 @@ import duckdb
 
 from ._controller import Controller, LocalController
 from ._planner import Planner
-from ._parser import QueryParser
+from ._parser import Query
 from ._provider import AWS
 
 
@@ -57,7 +57,7 @@ class DuckSession:
         """
         self._function_name = function_name
         self._invokations_default = invokations_default
-        self.enable_cache = enable_cache
+        self._enable_cache = enable_cache
         self._kwargs = kwargs
 
         self._conn = duckdb.connect(**duckdb_config)
@@ -84,7 +84,7 @@ class DuckSession:
         return LocalController(
             conn=self._conn,
             provider=AWS(function_name=self._function_name),
-            enable_cache=self.enable_cache,
+            enable_cache=self._enable_cache,
         )
 
     def _load_httpfs(self) -> None:
@@ -101,22 +101,19 @@ class DuckSession:
             """
         )
 
-    def _create_execution_plan(self, query: str, invokations: int | str) -> list[str]:
+    def _create_execution_plan(self, query: Query, invokations: int | str) -> list[str]:
         list_of_queries = self._planner.generate_plan(
             query=query, invokations=invokations
         )
 
         return list_of_queries
 
-    def _create_prefix(self, query: str, write_to: str | None) -> str:
-        query_hashed = QueryParser.hash_query(query=query)
-        bucket_name = QueryParser.find_bucket(query=query)
-
+    def _create_prefix(self, query: Query, write_to: str | None) -> str:
         if write_to is not None:
             if write_to[-1] != "/":
                 return write_to
             return write_to[:-1]
-        return f"{bucket_name}/{self._CACHE_PREFIX}/{query_hashed}"
+        return f"{query.bucket}/{self._CACHE_PREFIX}/{query.hashed}"
 
     def execute(
         self, query: str, *, invokations: int | None = None, write_to: str | None = None
@@ -133,10 +130,11 @@ class DuckSession:
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
         )
-        prefix = self._create_prefix(query=query, write_to=write_to)
+        query_parsed: Query = Query.parse(query)
+        prefix = self._create_prefix(query=query_parsed, write_to=write_to)
 
         execution_plan = self._create_execution_plan(
-            query=query, invokations=number_of_invokations
+            query=query_parsed, invokations=number_of_invokations
         )
 
         duckdb_obj, table_name = self._controller.execute(
@@ -145,6 +143,6 @@ class DuckSession:
 
         # Update metadata
         if table_name != "":
-            self._metadata[table_name] = query
+            self._metadata[table_name] = query_parsed.sql
 
         return duckdb_obj

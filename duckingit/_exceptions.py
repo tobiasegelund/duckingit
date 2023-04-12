@@ -6,9 +6,9 @@ class InvalidFilesystem(Exception):
     pass
 
 
-class InvalidQueryFormat(Exception):
+class MisConfigurationError(Exception):
     pass
 
 
-class MisConfigurationError(Exception):
+class ParserError(Exception):
     pass
