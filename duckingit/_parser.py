@@ -43,20 +43,22 @@ class Query:
     @property
     def source(self) -> str:
         # TODO: Update exceptions to user-defined exceptions
-        scan_statements = self.expression.find_all(expr.Table)
-        scan_statement = next(scan_statements).sql()
+        _source = self.dag.root.source.sql()
+        if _source[1:3] == "s3":
+            return _source
 
         # TODO: Update pattern for other filesystems or extensions
-        pattern = r"\(.*?(s3://[^/]+/.+(/\*|\.parquet|\*)).*?\)"
-        match = re.search(pattern, scan_statement)
+        # What about single file?
+        pattern = r"LIST_VALUE\((.*?)\)"
+        match = re.findall(pattern, _source)
 
-        if match is None:
+        if len(match) == 0:
             raise InvalidFilesystem(
                 "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*', couldn't be \
 found."
             )
 
-        return match.group(1)
+        return match[0]
 
     @classmethod
     def _unify_query(cls, query: str) -> str:

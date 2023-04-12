@@ -78,7 +78,7 @@ def test_bucket(query, expected):
         FROM TABLE
         WHERE 1=1
         """,
-            "SELECT * FROM TABLE WHERE 1=1",
+            "SELECT * FROM TABLE WHERE 1 = 1",
         ),
     ],
 )

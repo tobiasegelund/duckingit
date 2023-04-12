@@ -127,16 +127,16 @@ class DuckSession:
             write_to, str | None: The prefix to write to, e.g. 's3://BUCKET_NAME/data'
                 Defaults to .cache/duckingit/ prefix
         """
+        query_parsed: Query = Query.parse(query)
+
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
         )
-        query_parsed: Query = Query.parse(query)
-        prefix = self._create_prefix(query=query_parsed, write_to=write_to)
-
         execution_plan = self._create_execution_plan(
             query=query_parsed, invokations=number_of_invokations
         )
 
+        prefix = self._create_prefix(query=query_parsed, write_to=write_to)
         duckdb_obj, table_name = self._controller.execute(
             queries=execution_plan, prefix=prefix
         )

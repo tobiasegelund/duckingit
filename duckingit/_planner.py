@@ -1,10 +1,27 @@
 import re
 import itertools
+from dataclasses import dataclass
 
 import duckdb
 
 from ._exceptions import WrongInvokationType
 from ._parser import Query
+
+
+# @dataclass
+# class Plan:
+#     @classmethod
+#     def generate(cls):
+#         pass
+
+
+# @dataclass
+# class Step:
+#     pass
+
+#     @classmethod
+#     def create_step(cls):
+#         pass
 
 
 class Planner:
@@ -69,15 +86,15 @@ class Planner:
             for i in range(number_of_invokations)
         ]
 
-    def _update_query(self, query: str, list_of_prefixes: list[str]) -> str:
+    def _update_query(self, query: Query, list_of_prefixes: list[str]) -> str:
         sub = f"READ_PARQUET({list_of_prefixes})"
 
-        query_upd = re.sub(r"(?:SCAN|READ)_PARQUET\([^)]*\)", sub, query)
+        query_upd = re.sub(r"(?:SCAN|READ)_PARQUET\(LIST_VALUE\(\([^)]*\)", sub, query)
 
         return query_upd
 
     def generate_plan(self, query: Query, invokations: int | str) -> list[str]:
-        list_of_prefixes = self._scan_bucket(prefix=query.bucket)
+        list_of_prefixes = self._scan_bucket(prefix=query.source)
 
         if isinstance(invokations, str):
             if invokations != "auto":
@@ -95,7 +112,8 @@ class Planner:
 
         updated_queries = list()
         for chunk in list_of_chunks_of_prefixes:
-            query_upd = self._update_query(query=query.sql, list_of_prefixes=chunk)
+            # TODO: Use Query class and the expression to find source
+            query_upd = self._update_query(query=query, list_of_prefixes=chunk)
             updated_queries.append(query_upd)
         return updated_queries
 
@@ -105,12 +123,3 @@ class Planner:
 
 #     def analyze_query(self, query: str):
 #         pass
-
-
-# from enum import Enum
-# class Format(Enum):
-#     PARQUET = "parquet"
-#     JSON = "json"
-#     CSV = "csv"
-#     ORC = "orc"
-#     AVRO = "avro"

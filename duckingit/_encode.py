@@ -6,10 +6,25 @@ class Format(Enum):
     PARQUET = "parquet"
     JSON = "json"
 
+    #     CSV = "csv"
+    #     ORC = "orc"
+    #     AVRO = "avro"
 
-#     CSV = "csv"
-#     ORC = "orc"
-#     AVRO = "avro"
+    @property
+    def read_expression(self) -> str:
+        expressions = {
+            self.PARQUET: r"READ_PARQUET(LIST_VALUE())",
+            self.JSON: r"READ_JSON(LIST_VALUE())",
+        }
+        return expressions[self]
+
+    @property
+    def scan_expression(self) -> str:
+        expressions = {
+            self.PARQUET: r"SCAN_PARQUET(LIST_VALUE())",
+            self.JSON: r"READ_JSON_AUTO(LIST_VALUE())",
+        }
+        return expressions[self]
 
 
 def create_md5_hash_string(string: str) -> str:
