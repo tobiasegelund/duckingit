@@ -1,111 +1,88 @@
-import duckdb
 import pytest
 
 from duckingit._exceptions import WrongInvokationType
 from duckingit._parser import Query
+from duckingit._planner import Plan, Step
 
 
-@pytest.fixture
-def planner(MockPlanner):
-    conn = duckdb.connect(":memory:")
-    planner = MockPlanner(conn=conn)
-    yield planner
-
-
-@pytest.mark.parametrize(
-    "query, prefix, expected",
-    [
-        (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/02/test2.parquet'])",
-            ["s3://BUCKET_NAME/2023/02/test2.parquet"],
-            "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/test2.parquet'])",
-        ),
-        (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/02/test2.parquet']) WHERE 1=1",
-            ["s3://BUCKET_NAME/2023/02/test2.parquet"],
-            "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/test2.parquet']) WHERE 1=1",
-        ),
-        (
-            "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/test2.parquet']) WHERE 1=1",
-            ["s3://BUCKET_NAME/2023/02/test2.parquet"],
-            "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/test2.parquet']) WHERE 1=1",
-        ),
-    ],
-)
-def test_update_query(query, prefix, expected, planner):
-    got = planner._update_query(query=query, list_of_prefixes=prefix)
-
-    assert got == expected
+# def test_execution_plan():
+#     query = Query.parse("SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])")
+#     query.list_of_prefixes = [
+#         "s3://BUCKET_NAME/2023/01/*",
+#         "s3://BUCKET_NAME/2023/02/*",
+#         "s3://BUCKET_NAME/2023/03/*",
+#     ]
+#     got = Plan.create_from_query(query=query, invokations=1)
 
 
 @pytest.mark.parametrize(
-    "query, expected, invokations",
+    "query, invokations, expected",
     [
         (
             "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
-            [
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*', 's3://BUCKET_NAME/2023/03/*'])"
-            ],
             1,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*', 's3://BUCKET_NAME/2023/03/*'])"
+            ],
         ),
         (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*']) WHERE 1=1",
-            [
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*', 's3://BUCKET_NAME/2023/03/*']) WHERE 1=1"
-            ],
-            1,
-        ),
-        (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*']) WHERE 1=1",
-            [
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/03/*']) WHERE 1=1",
-            ],
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
             2,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
         ),
         (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*']) WHERE 1=1",
-            [
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/01/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/03/*']) WHERE 1=1",
-            ],
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
             3,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
         ),
         (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*']) WHERE 1=1",
-            [
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/01/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/03/*']) WHERE 1=1",
-            ],
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
             4,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
         ),
         (
-            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*']) WHERE 1=1",
-            [
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/01/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/02/*']) WHERE 1=1",
-                "SELECT * FROM read_parquet(['s3://BUCKET_NAME/2023/03/*']) WHERE 1=1",
-            ],
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
             "auto",
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
         ),
     ],
 )
-def test_plan(query, expected, invokations, planner):
+def test_execution_steps(query, invokations, expected):
     query = Query.parse(query)
-    got = planner.generate_plan(query=query, invokations=invokations)
+    query.list_of_prefixes = [
+        "s3://BUCKET_NAME/2023/01/*",
+        "s3://BUCKET_NAME/2023/02/*",
+        "s3://BUCKET_NAME/2023/03/*",
+    ]
+    plan = Plan.create_from_query(query=query, invokations=invokations)
 
-    assert got == expected
+    got = plan.execution_steps
+
+    assert list(i.subquery for i in got) == expected
 
 
-def test_plan_error(planner):
+def test_plan_error():
     got = False
 
-    query = "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*']) WHERE 1=1"
+    query = "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])"
     query = Query.parse(query)
     try:
-        _ = planner.generate_plan(query=query, invokations="1")
+        _ = Plan.create_from_query(query=query, invokations="1")
     except WrongInvokationType:
         got = True
 

@@ -55,16 +55,19 @@ class Query:
         return "s3://" + match.group(1)
 
     @property
+    def _source(self) -> str:
+        return self.dag.root.source.sql()
+
+    @property
     def source(self) -> str:
         # TODO: Update exceptions to user-defined exceptions
-        _source = self.dag.root.source.sql()
-        if _source[1:3] == "s3":
-            return _source
+        if self._source[1:3] == "s3":
+            return self._source
 
         # TODO: Update pattern for other filesystems or extensions
         # What about single file?
         pattern = r"LIST_VALUE\((.*?)\)"
-        match = re.findall(pattern, _source)
+        match = re.findall(pattern, self._source)
 
         if len(match) == 0:
             raise InvalidFilesystem(

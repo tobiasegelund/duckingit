@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass
 
 from ._exceptions import WrongInvokationType
@@ -13,26 +12,23 @@ class Step:
     subquery_hashed: str
 
     @classmethod
-    def create(cls, query: str, prefixes: list[str]):
-        sub = f"READ_PARQUET({prefixes})"
-
-        subquery = re.sub(r"(?:SCAN|READ)_PARQUET\(LIST_VALUE\(\([^)]*\)", sub, query)
+    def create(cls, query: Query, prefixes: list[str]):
+        # TODO: Update to use Format Enum
+        subquery = query.sql.replace(query._source, f"READ_PARQUET({prefixes})")
 
         return cls(subquery=subquery, subquery_hashed=create_md5_hash_string(subquery))
 
 
 class Plan:
-    """Class to plan the workload across nodes
+    """Class to create an execution plan across nodes
 
-    Basically, the class scan the bucket based on the query, divides the workload on the
-    number of invokations and hands the information to the Controller.
-
-    It's the Planner's job to make sure the workload is equally distributed between the
-    nodes, as well as validating the query.
+    The execution plan consists of a execution steps based on queries. Basically, the
+    class scan the bucket based on the query, divides the workload on the number of
+    invokations. Afterwards, its the Controller's job to execute the plan.
 
     Methods:
-        create: Creates a query plan that divides the workload between nodes that can be
-            used by the Controller
+        create_from_query: Creates an execution plan that divides the workload between
+            nodes
     """
 
     def __init__(self, query: Query, execution_steps: list[Step]) -> None:
@@ -57,9 +53,12 @@ class Plan:
 
         execution_steps: list[Step] = []
         for chunk in chunks_of_prefixes:
-            execution_steps.append(Step.create(query=query.sql, prefixes=chunk))
+            execution_steps.append(Step.create(query=query, prefixes=chunk))
 
         return cls(query=query, execution_steps=execution_steps)
+
+    def __repr__(self) -> str:
+        return f"{list(step for step in self.execution_steps)}"
 
 
 # class Optimizer:
