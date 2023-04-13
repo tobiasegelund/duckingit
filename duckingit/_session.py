@@ -2,12 +2,12 @@ import os
 
 import duckdb
 
-from ._controller import Controller, LocalController
-from ._planner import Plan, Step
-from ._parser import Query
-from ._provider import AWS
-from ._analyze import scan_bucket
-from ._config import DuckConfig
+from duckingit._controller import Controller, LocalController
+from duckingit._planner import Plan, Step
+from duckingit._parser import Query
+from duckingit.integrations import AWS
+from duckingit._analyze import scan_bucket
+from duckingit._config import DuckConfig
 
 
 class DuckSession:
@@ -24,7 +24,6 @@ class DuckSession:
 
     Methods:
         execute: Execute a DuckDB SQL query concurrently using X number of invokations
-
 
     Usage:
         >>> session = DuckSession()

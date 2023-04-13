@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from ._exceptions import WrongInvokationType
-from ._parser import Query
-from ._encode import create_md5_hash_string
-from ._analyze import split_list_in_chunks
+from duckingit._exceptions import WrongInvokationType
+from duckingit._parser import Query
+from duckingit._encode import create_md5_hash_string
+from duckingit._analyze import split_list_in_chunks
 
 
 @dataclass

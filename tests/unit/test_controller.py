@@ -2,7 +2,7 @@ import pytest
 import duckdb
 
 from duckingit._controller import LocalController
-from duckingit._provider import AWS
+from duckingit.integrations.aws import AWS
 
 
 @pytest.fixture

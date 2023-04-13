@@ -5,8 +5,8 @@ import uuid
 
 import duckdb
 
-from ._provider import Provider
-from ._planner import Plan, Step
+from duckingit.integrations.base import Provider
+from duckingit._planner import Plan
 
 
 class Controller:

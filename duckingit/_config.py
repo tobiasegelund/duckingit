@@ -1,4 +1,4 @@
-from ._provider import AWS
+from duckingit.integrations import AWS
 
 
 class LambdaConfig:
@@ -29,7 +29,7 @@ class LambdaConfig:
         self._provider._update_configurations(configs=self._configs)
 
         if warm_up:
-            self._provider.warm_up_function()
+            self._provider.warm_up()
 
 
 class DuckConfig:

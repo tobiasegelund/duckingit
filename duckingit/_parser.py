@@ -5,8 +5,8 @@ import sqlglot
 import sqlglot.expressions as expr
 import sqlglot.planner as planner
 
-from ._exceptions import InvalidFilesystem, ParserError
-from ._encode import create_md5_hash_string
+from duckingit._exceptions import InvalidFilesystem, ParserError
+from duckingit._encode import create_md5_hash_string
 
 
 @dataclass

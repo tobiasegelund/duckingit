@@ -1,7 +1,6 @@
 import pytest
-import duckdb
 
-from duckingit._provider import AWS
+from duckingit.integrations.aws import AWS
 from duckingit._session import DuckSession
 from duckingit._controller import LocalController
 from duckingit._parser import Query

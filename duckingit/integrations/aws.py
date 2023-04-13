@@ -2,18 +2,11 @@ import json
 import asyncio
 from typing import Literal
 
-# from enum import Enum
-
 import boto3
 
-from ._exceptions import MisConfigurationError
-from ._encode import create_md5_hash_string
-from ._planner import Step
-
-
-class Provider:
-    def invoke(self, execution_steps: list[Step], prefix: str) -> None:
-        raise NotImplementedError()
+from .base import Provider
+from duckingit._exceptions import MisConfigurationError
+from duckingit._planner import Step
 
 
 class AWS(Provider):
@@ -30,7 +23,7 @@ invokation_type parameter."
 
         self._client = boto3.client("lambda")
 
-    def warm_up_function(self) -> None:
+    def warm_up(self) -> None:
         """Method to avoid cold starts"""
         _ = self._client.invoke(
             FunctionName=self.function_name,
@@ -78,7 +71,7 @@ invokation_type parameter."
             self.invoke_sync(execution_steps=execution_steps, prefix=prefix)
         self.invoke_async(execution_steps=execution_steps, prefix=prefix)
 
-    def _verify_invokations_have_completed(self):
+    def _verify_completion_of_invokations(self):
         # TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken
         raise NotImplementedError()
 
@@ -99,17 +92,3 @@ invokation_type parameter."
         response = self._client.update_function_configuration(**configs)
 
         self._validate_configuration_reponse(response=response)
-
-
-# class GCP:
-#     pass
-
-
-# class Azure:
-#     pass
-
-
-# class ProviderType(Enum):
-#     AWS = AWS
-#     GCP = GCP
-#     Azure = Azure
