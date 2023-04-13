@@ -7,6 +7,7 @@ from ._planner import Plan, Step
 from ._parser import Query
 from ._provider import AWS
 from ._analyze import scan_bucket
+from ._config import DuckConfig
 
 
 class DuckSession:
@@ -67,6 +68,7 @@ class DuckSession:
 
         self._controller = self._set_controller()
 
+        self._conf: DuckConfig | None = None
         self._metadata: dict[str, str] = dict()
 
     @property
@@ -76,6 +78,12 @@ class DuckSession:
     @property
     def conn(self) -> duckdb.DuckDBPyConnection:
         return self._conn
+
+    @property
+    def conf(self) -> DuckConfig:
+        if self._conf is None:
+            self._conf = DuckConfig(function_name=self._function_name)
+        return self._conf
 
     def _set_controller(self) -> Controller:
         return LocalController(
