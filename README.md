@@ -1,4 +1,5 @@
 ![logo](logo.png)
+
 A framework to leverage the endless capabilities of serverless computing powered by DuckDB.
 
 Please note that the framework currently supports only AWS Lambda functions. To use the framework, you must first create a Lambda layer of DuckDB that can be used within a Lambda function. Additionally, you must create a Lambda Executor function that can execute the actual DuckDB SQL. Once you've completed these setup steps, you can leverage the power of serverless functions through the SDK written in Python to perform analytics on a Data Lake.
