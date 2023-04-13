@@ -32,7 +32,25 @@ After waiting for a minute or two, the infrastructure should be set up, and you 
 Once you have verified the above components, the infrastructure should be set up and fully operational.
 
 ## Usage
-... Coming up
+The framework's developer API draws inspiration from Spark's API, but it uses Python's naming conventions because the framework is implemented in Python.
+
+```python
+from duckingit import DuckSession
+
+query = "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/*'])"
+
+# Creates an entrypoint to use serverless DuckDB instances
+session = DuckSession()
+
+# Updates the Lambda function with 128 MB memory size and 30 timeout
+# as well as initializing the Lambda function to avoid cold start
+session.conf.memory_size(128).timeout(30).warm_up().update()
+
+# Execute the command
+session.execute(query=query)
+```
+
+... To be continued
 
 ## Contribution
 Thank you for taking an interest in my project on GitHub. I am always looking for new contributors to help me improve and evolve my codebase. If you're interested in contributing, feel free to fork the repository and submit a pull request with your changes.
