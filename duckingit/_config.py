@@ -36,7 +36,7 @@ class DuckConfig:
     """Class to configure the serverless function"""
 
     def __init__(self, function_name: str = "DuckExecutor") -> None:
-        self.function_name = function_name
+        self._function_name = function_name
 
         self._lambda_config = LambdaConfig(function_name=function_name)
 
