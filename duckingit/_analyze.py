@@ -1,6 +1,10 @@
 import itertools
+import typing as t
 
 import duckdb
+
+
+T = t.TypeVar("T")
 
 
 def scan_bucket(bucket: str, conn: duckdb.DuckDBPyConnection) -> list[str]:
@@ -30,7 +34,7 @@ def scan_bucket(bucket: str, conn: duckdb.DuckDBPyConnection) -> list[str]:
     return flatten_list(prefixes)
 
 
-def flatten_list(_list: list) -> list:
+def flatten_list(_list: list[list[T]]) -> list[T]:
     return list(itertools.chain(*_list))
 
 
