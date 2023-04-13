@@ -1,5 +1,4 @@
 import duckdb
-import json
 
 con = duckdb.connect(
     database=":memory:",
@@ -25,16 +24,9 @@ def lambda_handler(event, context):
 
     key = event["key"]  # key to S3
     payload = event["query"]
-
-    try:
-        con.sql(
-            f"""
-            COPY ({payload}) TO '{key}'
-            """
-        )
-        return {"statusCode": 200}
-    except Exception as e:
-        return {
-            "statusCode": 400,
-            "errorMessage": json.dumps(e),
-        }
+    con.sql(
+        f"""
+        COPY ({payload}) TO '{key}'
+        """
+    )
+    return {"statusCode": 200}
