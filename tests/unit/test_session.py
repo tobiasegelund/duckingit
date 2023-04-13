@@ -1,6 +1,7 @@
 import pytest
 
 from duckingit._exceptions import ParserError
+import duckingit._analyze
 
 
 @pytest.fixture

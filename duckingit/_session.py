@@ -106,6 +106,9 @@ class DuckSession:
             """
         )
 
+    def _scan_bucket(self, query: Query) -> list[str]:
+        return scan_bucket(query.source, conn=self.conn)
+
     def _create_prefix(self, query: Query, write_to: str | None) -> str:
         if write_to is not None:
             if write_to[-1] != "/":
@@ -126,7 +129,7 @@ class DuckSession:
                 Defaults to .cache/duckingit/ prefix
         """
         query_parsed: Query = Query.parse(query)
-        query_parsed.list_of_prefixes = scan_bucket(query_parsed.source, conn=self.conn)
+        query_parsed.list_of_prefixes = self._scan_bucket(query=query_parsed)
 
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default

@@ -4,6 +4,7 @@ import duckdb
 from duckingit._provider import AWS
 from duckingit._session import DuckSession
 from duckingit._controller import LocalController
+from duckingit._parser import Query
 
 
 class _MockAWS(AWS):
@@ -32,6 +33,9 @@ class _MockDuckSession(DuckSession):
         return _MockLocalController(
             conn=self._conn, provider=_MockAWS(function_name=self._function_name)
         )
+
+    def _scan_bucket(self, query: Query) -> list[str]:
+        return ["s3://BUCKET_NAME/2023/03/*"]
 
 
 @pytest.fixture
