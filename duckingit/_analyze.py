@@ -10,17 +10,16 @@ T = t.TypeVar("T")
 def scan_bucket(bucket: str, conn: duckdb.DuckDBPyConnection) -> list[str]:
     """Scans the URL for files, e.g. a S3 bucket
 
-    Usage:
-        Planner(conn=conn).scan_bucket(key="s3://<BUCKET_NAME>/*")
+    Args:
+        bucket, str: The bucket to scan, e.g. s3://BUCKET_NAME/
+        conn, duckdb.DuckDBPyConnection: A DuckDB connection
     """
-    if bucket[-1] != "*":
-        return [bucket]
 
     # TODO: Count the number of files / size in each prefix to divide the workload better
     glob_query = f"""
         SELECT DISTINCT
             CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
-        FROM GLOB('{bucket}')
+        FROM GLOB({bucket})
         """
 
     try:

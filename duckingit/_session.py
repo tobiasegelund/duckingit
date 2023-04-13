@@ -126,7 +126,7 @@ class DuckSession:
                 Defaults to .cache/duckingit/ prefix
         """
         query_parsed: Query = Query.parse(query)
-        query_parsed.list_of_prefixes = scan_bucket(query_parsed.bucket, conn=self.conn)
+        query_parsed.list_of_prefixes = scan_bucket(query_parsed.source, conn=self.conn)
 
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
