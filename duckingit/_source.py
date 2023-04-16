@@ -49,7 +49,7 @@ class DataSource:
         self, query: str, invokations: int | str, session: "DuckSession"
     ):
         query_parsed: Query = Query.parse(query)
-        query_parsed.list_of_prefixes = self._scan_bucket(bucket=query_parsed._source)
+        query_parsed.list_of_prefixes = self._scan_bucket(bucket=query_parsed.source)
 
         execution_plan = Plan.create_from_query(
             query=query_parsed, invokations=invokations
