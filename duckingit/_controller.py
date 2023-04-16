@@ -1,6 +1,3 @@
-"""
-https://arrow.apache.org/docs/python/ipc.html
-"""
 import uuid
 
 import duckdb

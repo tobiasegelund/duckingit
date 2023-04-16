@@ -4,7 +4,6 @@ import duckdb
 from duckingit.integrations.aws import AWS
 from duckingit._session import DuckSession
 from duckingit._controller import LocalController
-from duckingit._parser import Query
 from duckingit._source import DataSource
 
 
@@ -41,9 +40,7 @@ class _MockDuckSession(DuckSession):
         )
 
     def _set_source(self) -> None:
-        self._source = _MockDataSource(
-            conn=duckdb.connect(), controller=self._controller
-        )
+        self._source = _MockDataSource(conn=duckdb.connect(":memory:"))
 
 
 @pytest.fixture

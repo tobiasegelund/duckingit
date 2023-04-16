@@ -2,9 +2,7 @@ import os
 
 import duckdb
 
-from duckingit._controller import Controller, LocalController
-from duckingit._planner import Plan
-from duckingit._parser import Query
+from duckingit._controller import LocalController
 from duckingit.integrations import AWS
 from duckingit._config import DuckConfig
 from duckingit._dataset import Dataset
@@ -95,7 +93,7 @@ class DuckSession:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
 
     def _set_source(self) -> None:
-        self._source = DataSource(self.conn, controller=self._controller)
+        self._source = DataSource(self.conn)
 
     def _set_credentials(self) -> None:
         # https://duckdb.org/docs/sql/configuration.html
@@ -108,8 +106,17 @@ class DuckSession:
             """
         )
 
+    def sql(self, query: str, *, invokations: int | None = None) -> Dataset:
+        number_of_invokations = (
+            invokations if invokations is not None else self._invokations_default
+        )
+
+        return self._source.create_dataset(
+            query=query, invokations=number_of_invokations, session=self
+        )
+
     def execute(
-        self, query: str, *, invokations: int | None = None, write_to: str | None = None
+        self, query: str, *, invokations: int | None = None
     ) -> duckdb.DuckDBPyRelation:
         """Execute the query against a number of serverless functions
 
@@ -117,17 +124,7 @@ class DuckSession:
             query, str: DuckDB SQL query to run
             invokations, int | None: The number of invokations of the Lambda function
                 Defaults to 'auto' (See initialization of the session class)
-            write_to, str | None: The prefix to write to, e.g. 's3://BUCKET_NAME/data'
-                Defaults to .cache/duckingit/ prefix
         """
-        number_of_invokations = (
-            invokations if invokations is not None else self._invokations_default
-        )
-        duckdb_obj, table_name = self._source.create_dataset(
-            query=query, invokations=number_of_invokations, write_to=write_to
-        )
-        # Update metadata
-        if table_name != "":
-            self._metadata[table_name] = ""  # query_parsed.sql
+        dataset = self.sql(query=query, invokations=invokations)
 
-        return duckdb_obj
+        return dataset.show()
