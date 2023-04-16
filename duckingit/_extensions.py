@@ -1,8 +1,7 @@
-import hashlib
 from enum import Enum
 
 
-class Format(Enum):
+class FileFormat(Enum):
     PARQUET = "parquet"
     JSON = "json"
 
@@ -25,7 +24,3 @@ class Format(Enum):
             self.JSON: "READ_JSON_AUTO(LIST_VALUE({}))",
         }
         return expressions[self]
-
-
-def create_md5_hash_string(string: str) -> str:
-    return hashlib.md5(string.encode(), usedforsecurity=False).hexdigest()

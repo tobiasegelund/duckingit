@@ -2,8 +2,7 @@ from dataclasses import dataclass
 
 from duckingit._exceptions import WrongInvokationType
 from duckingit._parser import Query
-from duckingit._encode import create_md5_hash_string
-from duckingit._analyze import split_list_in_chunks
+from duckingit._utils import split_list_in_chunks, create_md5_hash_string
 
 
 @dataclass

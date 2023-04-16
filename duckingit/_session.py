@@ -3,11 +3,12 @@ import os
 import duckdb
 
 from duckingit._controller import Controller, LocalController
-from duckingit._planner import Plan, Step
+from duckingit._planner import Plan
 from duckingit._parser import Query
 from duckingit.integrations import AWS
-from duckingit._analyze import scan_bucket
 from duckingit._config import DuckConfig
+from duckingit._dataset import Dataset
+from duckingit._utils import scan_bucket
 
 
 class DuckSession:

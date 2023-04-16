@@ -6,7 +6,7 @@ import sqlglot.expressions as expr
 import sqlglot.planner as planner
 
 from duckingit._exceptions import InvalidFilesystem, ParserError
-from duckingit._encode import create_md5_hash_string
+from duckingit._utils import create_md5_hash_string
 
 
 @dataclass
@@ -56,10 +56,12 @@ class Query:
 
     @property
     def _source(self) -> str:
+        """Returns READ_PARQUET(VALUES(XX))"""
         return self.dag.root.source.sql()
 
     @property
     def source(self) -> str:
+        """Returns s3://BUCKET_NAME/X"""
         # TODO: Update exceptions to user-defined exceptions
         if self._source[1:3] == "s3":
             return self._source
