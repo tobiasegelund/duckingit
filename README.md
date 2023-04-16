@@ -59,7 +59,3 @@ Thank you for taking an interest in my project on GitHub. I am always looking fo
 I welcome all kinds of contributions, from bug fixes to feature additions and documentation improvements. If you're not sure where to start, take a look at the issues tab or reach out to us for guidance.
 
 Let's collaborate and make our project better together!
-
-
-___________________________________
-Ducking it ~ Killing it

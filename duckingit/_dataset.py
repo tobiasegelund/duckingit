@@ -17,10 +17,6 @@ class Dataset:
     Unmanaged, managed datasets? Able to apply drop?
 
     Data source class to handle the connection between bucket and session?
-
-    Generator => Only run when told
-
-    TODO: Update metadata on session
     """
 
     _CACHE_PREFIX = ".cache/duckingit"
@@ -42,6 +38,9 @@ class Dataset:
 
     def _create_prefix(self) -> str:
         return f"{self._query.bucket}/{self._CACHE_PREFIX}/{self._query.hashed}"
+
+    def format(self):
+        pass
 
     def write(self, mode: str):
         pass
