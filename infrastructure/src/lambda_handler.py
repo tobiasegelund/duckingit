@@ -26,7 +26,7 @@ def lambda_handler(event, context):
     payload = event["query"]
     con.sql(
         f"""
-        COPY ({payload}) TO '{key}'
+        COPY ({payload}) TO '{key} (FORMAT PARQUET)'
         """
     )
     return {"statusCode": 200}
