@@ -8,7 +8,7 @@ from duckingit._parser import Query
 from duckingit.integrations import AWS
 from duckingit._config import DuckConfig
 from duckingit._dataset import Dataset
-from duckingit._utils import scan_bucket
+from duckingit._source import DataSource
 
 
 class DuckSession:
@@ -31,8 +31,6 @@ class DuckSession:
         >>> resp = session.execute(query="SELECT * FROM scan_parquet(['s3::/<BUCKET_NAME>/*'])")
         >>> resp.show()
     """
-
-    _CACHE_PREFIX = ".cache/duckingit"
 
     def __init__(
         self,
@@ -66,7 +64,8 @@ class DuckSession:
         self._load_httpfs()
         self._set_credentials()
 
-        self._controller = self._set_controller()
+        self._set_controller()
+        self._set_source()
 
         self._conf: DuckConfig | None = None
         self._metadata: dict[str, str] = dict()
@@ -85,8 +84,8 @@ class DuckSession:
             self._conf = DuckConfig(function_name=self._function_name)
         return self._conf
 
-    def _set_controller(self) -> Controller:
-        return LocalController(
+    def _set_controller(self) -> None:
+        self._controller = LocalController(
             conn=self._conn,
             provider=AWS(function_name=self._function_name),
             enable_cache=self._enable_cache,
@@ -94,6 +93,9 @@ class DuckSession:
 
     def _load_httpfs(self) -> None:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
+
+    def _set_source(self) -> None:
+        self._source = DataSource(self.conn, controller=self._controller)
 
     def _set_credentials(self) -> None:
         # https://duckdb.org/docs/sql/configuration.html
@@ -105,16 +107,6 @@ class DuckSession:
             SET s3_secret_access_key='{os.getenv("AWS_SECRET_ACCESS_KEY", None)}';
             """
         )
-
-    def _scan_bucket(self, query: Query) -> list[str]:
-        return scan_bucket(query.source, conn=self.conn)
-
-    def _create_prefix(self, query: Query, write_to: str | None) -> str:
-        if write_to is not None:
-            if write_to[-1] != "/":
-                return write_to
-            return write_to[:-1]
-        return f"{query.bucket}/{self._CACHE_PREFIX}/{query.hashed}"
 
     def execute(
         self, query: str, *, invokations: int | None = None, write_to: str | None = None
@@ -128,23 +120,14 @@ class DuckSession:
             write_to, str | None: The prefix to write to, e.g. 's3://BUCKET_NAME/data'
                 Defaults to .cache/duckingit/ prefix
         """
-        query_parsed: Query = Query.parse(query)
-        query_parsed.list_of_prefixes = self._scan_bucket(query=query_parsed)
-
         number_of_invokations = (
             invokations if invokations is not None else self._invokations_default
         )
-        execution_plan = Plan.create_from_query(
-            query=query_parsed, invokations=number_of_invokations
+        duckdb_obj, table_name = self._source.create_dataset(
+            query=query, invokations=number_of_invokations, write_to=write_to
         )
-
-        prefix = self._create_prefix(query=query_parsed, write_to=write_to)
-        duckdb_obj, table_name = self._controller.execute(
-            execution_plan=execution_plan, prefix=prefix
-        )
-
         # Update metadata
         if table_name != "":
-            self._metadata[table_name] = query_parsed.sql
+            self._metadata[table_name] = ""  # query_parsed.sql
 
         return duckdb_obj

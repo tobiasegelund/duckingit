@@ -2,7 +2,6 @@ import itertools
 import hashlib
 import typing as t
 
-import duckdb
 
 T = t.TypeVar("T")
 
@@ -25,29 +24,3 @@ def split_list_in_chunks(_list: list[str], number_of_invokations: int) -> list[l
 
 def create_md5_hash_string(string: str) -> str:
     return hashlib.md5(string.encode(), usedforsecurity=False).hexdigest()
-
-
-def scan_bucket(bucket: str, conn: duckdb.DuckDBPyConnection) -> list[str]:
-    """Scans the URL for files, e.g. a S3 bucket
-
-    Args:
-        bucket, str: The bucket to scan, e.g. s3://BUCKET_NAME/
-        conn, duckdb.DuckDBPyConnection: A DuckDB connection
-    """
-
-    # TODO: Count the number of files / size in each prefix to divide the workload better
-    glob_query = f"""
-        SELECT DISTINCT
-            CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
-        FROM GLOB({bucket})
-        """
-
-    try:
-        prefixes = conn.sql(glob_query).fetchall()
-
-    except RuntimeError:
-        raise ValueError(
-            "Please validate that the FROM statement in the query is correct."
-        )
-
-    return flatten_list(prefixes)

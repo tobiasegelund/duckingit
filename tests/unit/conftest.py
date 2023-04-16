@@ -1,9 +1,11 @@
 import pytest
+import duckdb
 
 from duckingit.integrations.aws import AWS
 from duckingit._session import DuckSession
 from duckingit._controller import LocalController
 from duckingit._parser import Query
+from duckingit._source import DataSource
 
 
 class _MockAWS(AWS):
@@ -27,14 +29,21 @@ class _MockLocalController(LocalController):
         )
 
 
+class _MockDataSource(DataSource):
+    def _scan_bucket(self, bucket: str) -> list[str]:
+        return ["s3://BUCKET_NAME/2023/03/*"]
+
+
 class _MockDuckSession(DuckSession):
     def _set_controller(self):
-        return _MockLocalController(
+        self._controller = _MockLocalController(
             conn=self._conn, provider=_MockAWS(function_name=self._function_name)
         )
 
-    def _scan_bucket(self, query: Query) -> list[str]:
-        return ["s3://BUCKET_NAME/2023/03/*"]
+    def _set_source(self) -> None:
+        self._source = _MockDataSource(
+            conn=duckdb.connect(), controller=self._controller
+        )
 
 
 @pytest.fixture
