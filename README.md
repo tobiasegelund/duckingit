@@ -33,7 +33,7 @@ After waiting for a minute or two, the infrastructure should be set up, and you 
 Once you have verified the above components, the infrastructure should be set up and fully operational.
 
 ## Usage
-The framework's developer API draws inspiration from Spark's API, but it uses Python's naming conventions because the framework is implemented in Python.
+The developer API is inspired by the API of Spark, but it uses Python's naming conventions because the framework is implemented in Python.
 
 ```python
 from duckingit import DuckSession
