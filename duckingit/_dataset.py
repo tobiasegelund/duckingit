@@ -13,7 +13,8 @@ if t.TYPE_CHECKING:
 
 
 class Modes(Enum):
-    """
+    """A collection of modes to apply when writing
+
     Modes:
         append: Append the data to the table
         overwrite: Overwrite the data to the table (e.g. DELETE & INSERT)
@@ -42,7 +43,8 @@ class Modes(Enum):
             resp = conn.sql(f"SELECT COUNT(*) AS cnt FROM GLOB('{source}/*')")
             if resp.fetchall()[0][0]:  # Anything other than 0 it raises an exception
                 raise DatasetExistError(
-                    "The dataset exists already. You may want to use 'overwrite' as mode instead?"
+                    "The dataset exists - you can use 'overwrite' as mode if you want \
+to overwrite the data?"
                 )
 
         _funcs = {
@@ -61,8 +63,6 @@ class Formats(Enum):
 
 
 class DatasetWriter:
-    # write_to, str | None: The prefix to write to, e.g. 's3://BUCKET_NAME/data'
-    #     Defaults to .cache/duckingit/ prefix
     _mode: Modes = Modes.WRITE
 
     def __init__(self, session: "DuckSession", dataset: "Dataset") -> None:
@@ -89,7 +89,6 @@ class DatasetWriter:
         return self
 
     def save(self, path: str) -> None:
-        # TODO: Validate input for s3 bucket name
         assert isinstance(path, str), "`path` must be of type string"
         assert path[:2] == "s3", "`path` must be a S3 bucket"
 
