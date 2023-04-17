@@ -12,3 +12,7 @@ class MisConfigurationError(Exception):
 
 class ParserError(Exception):
     pass
+
+
+class DatasetExistError(Exception):
+    pass

@@ -1,9 +1,14 @@
-import uuid
+import typing as t
 
 import duckdb
 
-from duckingit.integrations.base import Provider
 from duckingit._planner import Plan
+from duckingit._utils import flatten_list
+from duckingit._parser import Query
+from duckingit._dataset import Dataset
+
+if t.TYPE_CHECKING:
+    from duckingit._session import DuckSession
 
 
 class Controller:
@@ -22,50 +27,50 @@ class LocalController(Controller):
 
     TODO:
         - Incorporate cache functionality to minimize compute power.
+        - Copy from cache?
+        - Only select a subset of partitions (minimize throughput)
+            Can be based on number of rows or byte size
     """
 
-    def __init__(
-        self,
-        conn: duckdb.DuckDBPyConnection,
-        provider: Provider,
-        enable_cache: bool = True,
-    ) -> None:
-        self.conn = conn
-        self.provider = provider
-        self.enable_cache = enable_cache
+    def __init__(self, session: "DuckSession") -> None:
+        self._session = session
 
-    def _scan_cached_data(self, query_hash: str):
-        pass
+    def _scan_bucket(self, bucket: str) -> list[str]:
+        """Scans the URL for files, e.g. a S3 bucket
 
-    def _create_tmp_table_name(self) -> str:
-        return f"__duckingit_{uuid.uuid1().hex[:6]}"
+        Args:
+            bucket, str: The bucket to scan, e.g. s3://BUCKET_NAME/
+        """
 
-    def _create_tmp_table(self, table_name: str, prefix: str) -> None:
-        self.conn.sql(
-            f"""
-            CREATE TEMP TABLE {table_name} AS (
-                SELECT * FROM read_parquet(['{prefix}/*'])
-            )
+        # TODO: Count the number of files / size in each prefix to divide the workload better
+        glob_query = f"""
+            SELECT DISTINCT
+                CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
+            FROM GLOB({bucket})
             """
+
+        try:
+            prefixes = self._session.conn.sql(glob_query).fetchall()
+
+        except RuntimeError:
+            raise ValueError(
+                "Please validate that the FROM statement in the query is correct."
+            )
+
+        return flatten_list(prefixes)
+
+    def create_dataset(self, query: str, invokations: int | str):
+        query_parsed: Query = Query.parse(query)
+        query_parsed.list_of_prefixes = self._scan_bucket(bucket=query_parsed.source)
+
+        execution_plan = Plan.create_from_query(
+            query=query_parsed, invokations=invokations
         )
 
-    def execute(
-        self,
-        execution_plan: Plan,
-        prefix: str,
-    ) -> tuple[duckdb.DuckDBPyRelation, str]:
-        self.provider.invoke(
-            execution_steps=execution_plan.execution_steps, prefix=prefix
-        )
-
-        if self.enable_cache:
-            table_name = self._create_tmp_table_name()
-            self._create_tmp_table(table_name=table_name, prefix=prefix)
-            return self.conn.sql("SELECT * FROM {}".format(table_name)), table_name
-
-        return (
-            self.conn.sql(f"SELECT * FROM read_parquet(['{prefix}/*'])"),
-            "",
+        return Dataset(
+            query=query_parsed,
+            execution_plan=execution_plan,
+            session=self._session,
         )
 
 

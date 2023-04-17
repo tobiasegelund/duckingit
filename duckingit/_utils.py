@@ -1,6 +1,7 @@
 import itertools
 import hashlib
 import typing as t
+import uuid
 
 
 T = t.TypeVar("T")
@@ -24,3 +25,7 @@ def split_list_in_chunks(_list: list[str], number_of_invokations: int) -> list[l
 
 def create_md5_hash_string(string: str) -> str:
     return hashlib.md5(string.encode(), usedforsecurity=False).hexdigest()
+
+
+def create_unique_name(prefix: str = "__duckingit") -> str:
+    return f"{prefix}_{uuid.uuid1().hex[:6]}"

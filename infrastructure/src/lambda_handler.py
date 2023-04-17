@@ -23,10 +23,6 @@ def lambda_handler(event, context):
         pass
 
     key = event["key"]  # key to S3
-    payload = event["query"]
-    con.sql(
-        f"""
-        COPY ({payload}) TO '{key} (FORMAT PARQUET)'
-        """
-    )
+    query = event["query"]
+    con.sql("COPY ({query}) TO '{key}' (FORMAT 'PARQUET')".format(key=key, query=query))
     return {"statusCode": 200}

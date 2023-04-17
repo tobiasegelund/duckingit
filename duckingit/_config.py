@@ -43,21 +43,24 @@ class DuckConfig:
     def memory_size(self, memory_size: int):
         if not isinstance(memory_size, int):
             raise ValueError(
-                f"Memory size must be integer - {type(memory_size)} was tried"
+                f"Memory size must be an integer - {type(memory_size)} was provided"
             )
         self._lambda_config._change_memory_size(memory_size=memory_size)
         return self
 
     def timeout(self, timeout: int):
         if not isinstance(timeout, int):
-            raise ValueError(f"Timeout must be integer - {type(timeout)} was tried")
+            raise ValueError(
+                f"Timeout must be an integer - {type(timeout)} was provided"
+            )
         self._lambda_config._change_timeout(timeout=timeout)
         return self
 
     def max_invokations(self, invokations: int):
+        # TODO: Singleton to share configs?
         if not isinstance(invokations, int):
             raise ValueError(
-                f"Invokations must be integer - {type(invokations)} was tried"
+                f"Invokations must be an integer - {type(invokations)} was provided"
             )
         self._max_invokations = invokations
         return self
