@@ -41,11 +41,25 @@ class DuckConfig:
         self._lambda_config = LambdaConfig(function_name=function_name)
 
     def memory_size(self, memory_size: int):
+        if not isinstance(memory_size, int):
+            raise ValueError(
+                f"Memory size must be integer - {type(memory_size)} was tried"
+            )
         self._lambda_config._change_memory_size(memory_size=memory_size)
         return self
 
     def timeout(self, timeout: int):
+        if not isinstance(timeout, int):
+            raise ValueError(f"Timeout must be integer - {type(timeout)} was tried")
         self._lambda_config._change_timeout(timeout=timeout)
+        return self
+
+    def max_invokations(self, invokations: int):
+        if not isinstance(invokations, int):
+            raise ValueError(
+                f"Invokations must be integer - {type(invokations)} was tried"
+            )
+        self._max_invokations = invokations
         return self
 
     def warm_up(self):

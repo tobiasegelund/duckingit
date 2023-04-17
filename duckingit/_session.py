@@ -35,8 +35,6 @@ class DuckSession:
         function_name: str = "DuckExecutor",
         # controller_function: str = "DuckController",
         duckdb_config: dict = {"database": ":memory:", "read_only": False},
-        invokations_default: int | str = "auto",
-        enable_cache: bool = True,
         **kwargs,
     ) -> None:
         """Initiliaze a session of serverless DuckDB instances
@@ -54,8 +52,6 @@ class DuckSession:
             **kwargs
         """
         self._function_name = function_name
-        self._invokations_default = invokations_default
-        self._enable_cache = enable_cache
         self._kwargs = kwargs
 
         self._conn = duckdb.connect(**duckdb_config)
@@ -84,9 +80,7 @@ class DuckSession:
 
     def _set_controller(self) -> None:
         self._controller = LocalController(
-            conn=self._conn,
-            provider=AWS(function_name=self._function_name),
-            enable_cache=self._enable_cache,
+            conn=self._conn, provider=AWS(function_name=self._function_name)
         )
 
     def _load_httpfs(self) -> None:
@@ -106,10 +100,10 @@ class DuckSession:
             """
         )
 
-    def sql(self, query: str, *, invokations: int | None = None) -> Dataset:
-        number_of_invokations = (
-            invokations if invokations is not None else self._invokations_default
-        )
+    def sql(self, query: str) -> Dataset:
+        number_of_invokations = "auto"
+        if hasattr(self.conf, "_max_invokations"):
+            number_of_invokations = self.conf._max_invokations
 
         return self._source.create_dataset(
             query=query, invokations=number_of_invokations, session=self
