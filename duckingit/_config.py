@@ -38,6 +38,7 @@ class DuckConfig:
     def __init__(self, function_name: str = "DuckExecutor") -> None:
         self._function_name = function_name
 
+        self._cache_expiration_time = 60  # 60 minutes default
         self._lambda_config = LambdaConfig(function_name=function_name)
 
     def memory_size(self, memory_size: int):
@@ -63,6 +64,14 @@ class DuckConfig:
                 f"Invokations must be an integer - {type(invokations)} was provided"
             )
         self._max_invokations = invokations
+        return self
+
+    def cache_expiration_time(self, time: int = 60):
+        """Expiration time of cached objects in minutes"""
+        # TODO: Singleton to share configs?
+        if not isinstance(time, int):
+            raise ValueError(f"Time must be an integer - {type(time)} was provided")
+        self._cache_expiration_time = time
         return self
 
     def warm_up(self):

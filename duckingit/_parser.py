@@ -8,7 +8,7 @@ import sqlglot.expressions as expr
 from sqlglot.optimizer import optimizer
 
 from duckingit._exceptions import InvalidFilesystem, ParserError
-from duckingit._utils import create_md5_hash_string
+from duckingit._utils import create_md5_hash_string, scan_bucket_for_prefixes
 
 
 @dataclass
@@ -35,14 +35,8 @@ class Query:
     @property
     def list_of_prefixes(self) -> list[str]:
         if self._list_of_prefixes is None:
-            return [self.source]
+            self._list_of_prefixes = scan_bucket_for_prefixes(bucket=self.source)
         return self._list_of_prefixes
-
-    @list_of_prefixes.setter
-    def list_of_prefixes(self, prefixes: list[str]) -> None:
-        if not isinstance(prefixes, list):
-            raise ValueError(f"{prefixes} must be a list of strings")
-        self._list_of_prefixes = prefixes
 
     @property
     def scans(self) -> t.Generator:

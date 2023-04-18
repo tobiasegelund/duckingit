@@ -82,7 +82,7 @@ from duckingit._planner import Plan, Step
 )
 def test_execution_steps(query, invokations, expected):
     query = Query.parse(query)
-    query.list_of_prefixes = [
+    query._list_of_prefixes = [
         "s3://BUCKET_NAME/2023/01/*",
         "s3://BUCKET_NAME/2023/02/*",
         "s3://BUCKET_NAME/2023/03/*",

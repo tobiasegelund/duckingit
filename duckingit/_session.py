@@ -5,6 +5,8 @@ import duckdb
 from duckingit._controller import LocalController
 from duckingit._config import DuckConfig
 from duckingit._dataset import Dataset
+from duckingit._parser import Query
+from duckingit._planner import Plan
 
 
 class DuckSession:
@@ -53,8 +55,8 @@ class DuckSession:
         self._set_credentials()
 
         self._set_controller()
+        self._set_conf()
 
-        self._conf: DuckConfig | None = None
         self._metadata: dict[str, str] = dict()
 
     @property
@@ -71,12 +73,13 @@ class DuckSession:
 
     @property
     def conf(self) -> DuckConfig:
-        if self._conf is None:
-            self._conf = DuckConfig(function_name=self._function_name)
         return self._conf
 
     def _set_controller(self) -> None:
         self._controller = LocalController(session=self)
+
+    def _set_conf(self) -> None:
+        self._conf = DuckConfig(function_name=self._function_name)
 
     def _load_httpfs(self) -> None:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
@@ -97,8 +100,19 @@ class DuckSession:
         if hasattr(self.conf, "_max_invokations"):
             number_of_invokations = self.conf._max_invokations
 
-        return self._controller.create_dataset(
-            query=query, invokations=number_of_invokations
+        parsed_query = Query.parse(query)
+        # parsed_query.list_of_prefixes = self.scan_bucket_for_prefixes(
+        #     bucket=parsed_query.source
+        # )
+
+        execution_plan = Plan.create_from_query(
+            query=parsed_query, invokations=number_of_invokations
+        )
+
+        return Dataset(
+            query=parsed_query,
+            execution_plan=execution_plan,
+            session=self,
         )
 
     def execute(self, query: str) -> duckdb.DuckDBPyRelation:

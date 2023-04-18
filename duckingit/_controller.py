@@ -3,9 +3,9 @@ import typing as t
 import duckdb
 
 from duckingit._planner import Plan
-from duckingit._utils import flatten_list
-from duckingit._parser import Query
-from duckingit._dataset import Dataset
+
+# from duckingit._dataset import Dataset
+# from duckingit.integrations import AWS
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
@@ -35,48 +35,20 @@ class LocalController(Controller):
     def __init__(self, session: "DuckSession") -> None:
         self._session = session
 
-    def scan_bucket_for_prefixes(self, bucket: str) -> list[str]:
-        """Scans the URL for files, e.g. a S3 bucket
+    def fetch_cache_metadata(self):
+        pass
 
-        Args:
-            bucket, str: The bucket to scan, e.g. s3://BUCKET_NAME/
-        """
+    def fetch_cache(self):
+        pass
 
-        # TODO: Count the number of files / size in each prefix to divide the workload better
-        glob_query = f"""
-            SELECT DISTINCT
-                CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
-            FROM GLOB({bucket})
-            """
-
-        try:
-            prefixes = self._session.conn.sql(glob_query).fetchall()
-
-        except RuntimeError:
-            raise ValueError(
-                "Please validate that the FROM statement in the query is correct."
-            )
-
-        return flatten_list(prefixes)
+    def check_status_of_invokations(self):
+        pass
 
     def evaluate_execution_plan(self):
         pass
 
-    def create_dataset(self, query: str, invokations: int | str):
-        parsed_query: Query = Query.parse(query)
-        parsed_query.list_of_prefixes = self.scan_bucket_for_prefixes(
-            bucket=parsed_query.source
-        )
-
-        execution_plan = Plan.create_from_query(
-            query=parsed_query, invokations=invokations
-        )
-
-        return Dataset(
-            query=parsed_query,
-            execution_plan=execution_plan,
-            session=self._session,
-        )
+    def execute_plan(self, execution_plan: Plan, prefix: str):
+        pass
 
 
 # class RemoteController(Controller):

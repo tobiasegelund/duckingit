@@ -4,6 +4,7 @@ import typing as t
 import uuid
 from collections.abc import Iterable
 
+import duckdb
 
 T = t.TypeVar("T")
 
@@ -87,3 +88,36 @@ def ensure_iterable(value: T | t.Iterable[T]) -> list[T]:
         return [value]
 
     return value
+
+
+def create_duckdb_conn_with_loaded_httpfs() -> duckdb.DuckDBPyConnection:
+    """Returns a in memory DuckDB connection with httpfs loaded"""
+    conn = duckdb.connect(":memory:")
+    conn.execute("LOAD httpfs;")
+    return conn
+
+
+def scan_bucket_for_prefixes(bucket: str) -> list[str]:
+    """Scans the a bucket for prefixes using DuckDB
+
+    Args:
+        bucket, str: The bucket to scan, e.g. s3://BUCKET_NAME/
+    """
+    conn = create_duckdb_conn_with_loaded_httpfs()
+
+    # TODO: Count the number of files / size in each prefix to divide the workload better
+    glob_query = f"""
+        SELECT DISTINCT
+            CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
+        FROM GLOB({bucket})
+        """
+
+    try:
+        prefixes = conn.sql(glob_query).fetchall()
+
+    except RuntimeError:
+        raise ValueError(
+            "Please validate that the FROM statement in the query is correct."
+        )
+
+    return flatten_list(prefixes)
