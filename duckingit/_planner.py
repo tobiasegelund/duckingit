@@ -23,8 +23,11 @@ class Step:
             ):
                 subquery = subquery.replace(table, f"READ_PARQUET({prefixes})")
 
-            if table[: len("READ_JSON_AUTO")] == "READ_JSON_AUTO":
-                subquery = subquery.replace(table, f"READ_JSON_AUTO({prefixes})")
+            for extension in ["JSON", "CSV"]:
+                if table[: len(f"READ_{extension}_AUTO")] == f"READ_{extension}_AUTO":
+                    subquery = subquery.replace(
+                        table, f"READ_{extension}_AUTO({prefixes})"
+                    )
 
         return cls(subquery=subquery, subquery_hashed=create_md5_hash_string(subquery))
 
