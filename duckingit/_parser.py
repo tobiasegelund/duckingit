@@ -1,9 +1,11 @@
 import re
+import typing as t
+import copy
 from dataclasses import dataclass
 
 import sqlglot
 import sqlglot.expressions as expr
-import sqlglot.planner as planner
+from sqlglot.optimizer import optimizer
 
 from duckingit._exceptions import InvalidFilesystem, ParserError
 from duckingit._utils import create_md5_hash_string
@@ -14,7 +16,6 @@ class Query:
     sql: str
     hashed: str
     expression: expr.Expression
-    dag: planner.Plan
 
     _list_of_prefixes: list[str] | None = None
 
@@ -22,14 +23,13 @@ class Query:
     def parse(cls, query: str):
         query = cls._unify_query(query)
 
-        expression = sqlglot.parse_one(query)
-        dag = planner.Plan(expression)
+        expression = sqlglot.parse_one(query, read="duckdb")
+        # optimized_expression = optimizer.optimize(expression)
 
         return cls(
             sql=query,
             hashed=create_md5_hash_string(query),
             expression=expression,
-            dag=dag,
         )
 
     @property
@@ -45,39 +45,65 @@ class Query:
         self._list_of_prefixes = prefixes
 
     @property
-    def bucket(self) -> str:
-        pattern = r"s3:\/\/([A-Za-z0-9_-]+)"
-        match = re.search(pattern, self.sql)
-
-        if not match:
-            raise ValueError("Couldn't find bucket name in query")
-        # TODO: Make regex more generic
-        return "s3://" + match.group(1)
+    def scans(self) -> t.Generator:
+        yield from self.expression.find_all(expr.Select)
 
     @property
-    def _source(self) -> str:
-        """Returns READ_PARQUET(VALUES(XX))"""
-        return self.dag.root.source.sql()
+    def aggregates(self) -> t.Generator:
+        yield from self.expression.find_all(expr.AggFunc)
+
+    @property
+    def sorts(self) -> t.Generator:
+        yield from self.expression.find_all(expr.Order)
+
+    @property
+    def joins(self) -> t.Generator:
+        yield from self.expression.find_all(expr.Join)
+
+    @property
+    def tables(self) -> t.Generator:
+        """Returns a generator that yields over table names, e.g. READ_PARQUET(VALUES(XX))"""
+        yield from self.expression.find_all(expr.Table)
+
+    @property
+    def bucket(self) -> str:
+        """Returns the name of the bucket, e.g. s3://bucket-name-test"""
+        for table in self.tables:
+            # TODO: Generalise the query
+            pattern = r"s3:\/\/([A-Za-z0-9_-]+)"
+            match = re.search(pattern, str(table))
+
+            if not match:
+                continue
+
+            return "s3://" + match.group(1)
+
+        raise ValueError("Not able to locate any bucket name in query")
 
     @property
     def source(self) -> str:
-        """Returns s3://BUCKET_NAME/X"""
+        """Returns the source of the table, e.g. s3://BUCKET_NAME/2023"""
         # TODO: Update exceptions to user-defined exceptions
-        if self._source[1:3] == "s3":
-            return self._source
+        for table in self.tables:
+            # TODO: Update pattern for other filesystems or extensions
+            # What about single file?
+            pattern = r"ARRAY\((.*?)\)"  # sqlglot bug, should be LIST_VALUE
+            match = re.search(pattern, str(table))
 
-        # TODO: Update pattern for other filesystems or extensions
-        # What about single file?
-        pattern = r"LIST_VALUE\((.*?)\)"
-        match = re.findall(pattern, self._source)
+            if not match:
+                continue
 
-        if len(match) == 0:
-            raise InvalidFilesystem(
-                "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*', couldn't be \
+            # TODO: Update to generator
+            return match.group(1)
+
+        raise InvalidFilesystem(
+            "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*', couldn't be \
 found."
-            )
+        )
 
-        return match[0]
+    def copy(self):
+        """Returns a deep copy of the object itself"""
+        return copy.deepcopy(self)
 
     @classmethod
     def _unify_query(cls, query: str) -> str:

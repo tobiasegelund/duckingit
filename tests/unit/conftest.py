@@ -27,7 +27,7 @@ class _MockDataset(Dataset):
 
 
 class _MockLocalController(LocalController):
-    def _scan_bucket(self, bucket: str) -> list[str]:
+    def scan_bucket_for_prefixes(self, bucket: str) -> list[str]:
         return ["s3://BUCKET_NAME/2023/03/*"]
 
 

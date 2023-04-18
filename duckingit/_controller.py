@@ -35,7 +35,7 @@ class LocalController(Controller):
     def __init__(self, session: "DuckSession") -> None:
         self._session = session
 
-    def _scan_bucket(self, bucket: str) -> list[str]:
+    def scan_bucket_for_prefixes(self, bucket: str) -> list[str]:
         """Scans the URL for files, e.g. a S3 bucket
 
         Args:
@@ -59,16 +59,21 @@ class LocalController(Controller):
 
         return flatten_list(prefixes)
 
+    def evaluate_execution_plan(self):
+        pass
+
     def create_dataset(self, query: str, invokations: int | str):
-        query_parsed: Query = Query.parse(query)
-        query_parsed.list_of_prefixes = self._scan_bucket(bucket=query_parsed.source)
+        parsed_query: Query = Query.parse(query)
+        parsed_query.list_of_prefixes = self.scan_bucket_for_prefixes(
+            bucket=parsed_query.source
+        )
 
         execution_plan = Plan.create_from_query(
-            query=query_parsed, invokations=invokations
+            query=parsed_query, invokations=invokations
         )
 
         return Dataset(
-            query=query_parsed,
+            query=parsed_query,
             execution_plan=execution_plan,
             session=self._session,
         )

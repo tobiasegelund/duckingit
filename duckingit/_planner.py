@@ -12,8 +12,16 @@ class Step:
 
     @classmethod
     def create(cls, query: Query, prefixes: list[str]):
-        # TODO: Update to use Format Enum
-        subquery = query.sql.replace(query._source, f"READ_PARQUET({prefixes})")
+        # TODO: Update to use Extension Enum
+        subquery = query.copy().sql
+        for table in query.tables:
+            table = str(table).replace("ARRAY", "LIST_VALUE")  # Current sqlglot bug
+
+            if (
+                table[: len("READ_PARQUET")] == "READ_PARQUET"
+                or table[: len("SCAN_PARQUET")] == "SCAN_PARQUET"
+            ):
+                subquery = subquery.replace(table, f"READ_PARQUET({prefixes})")
 
         return cls(subquery=subquery, subquery_hashed=create_md5_hash_string(subquery))
 
@@ -39,8 +47,7 @@ class Plan:
         if isinstance(invokations, str):
             if invokations != "auto":
                 raise WrongInvokationType(
-                    f"The number of invokations can only be 'auto' or an integer. \
-{invokations} was provided."
+                    "`invokations` can only be 'auto' or an integer"
                 )
             invokations = len(query.list_of_prefixes)
 
@@ -60,8 +67,25 @@ class Plan:
         return f"{list(step for step in self.execution_steps)}"
 
 
-# class Optimizer:
-#     pass
+class Operation:
+    pass
 
-#     def analyze_query(self, query: str):
-#         pass
+
+class Scan:
+    pass
+
+
+class Sort:
+    pass
+
+
+class Set:
+    pass
+
+
+class Aggregate:
+    pass
+
+
+class Join:
+    pass

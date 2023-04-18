@@ -29,23 +29,18 @@ class Modes(Enum):
 
     @property
     def command(self):
-        def append(conn: duckdb.DuckDBPyConnection, *args, **kwargs):
-            # TODO: Find missing partitions
+        def append(conn: duckdb.DuckDBPyConnection, source: str):
+            files = self.scan_source_for_files(conn=conn, source=source)
             raise NotImplementedError()
 
-        def overwrite(conn: duckdb.DuckDBPyConnection, *args, **kwargs):
-            # TODO How to handle two scenerios
+        def overwrite(conn: duckdb.DuckDBPyConnection, source: str):
+            # TODO: Drop data at source
             pass
 
-        def write(
-            conn: duckdb.DuckDBPyConnection, source: str, *args, **kwargs
-        ) -> None:
-            resp = conn.sql(f"SELECT COUNT(*) AS cnt FROM GLOB('{source}/*')")
-            if resp.fetchall()[0][0]:  # Anything other than 0 it raises an exception
-                raise DatasetExistError(
-                    "The dataset exists - you can use 'overwrite' as mode if you want \
-to overwrite the data?"
-                )
+        def write(conn: duckdb.DuckDBPyConnection, source: str) -> None:
+            files = self.scan_source_for_files(conn=conn, source=source)
+            if len(files) > 0:
+                raise DatasetExistError(f"Table with name `{source}` already exists!")
 
         _funcs = {
             self.APPEND: append,
@@ -54,6 +49,12 @@ to overwrite the data?"
         }
 
         return _funcs[self]
+
+    def scan_source_for_files(
+        self, conn: duckdb.DuckDBPyConnection, source: str
+    ) -> list[tuple[str]]:
+        resp = conn.sql(f"SELECT * FROM GLOB('{source}/*')")
+        return resp.fetchall()
 
 
 class Formats(Enum):
@@ -70,6 +71,9 @@ class DatasetWriter:
         self._dataset = dataset
 
     def _create_tmp_table(self, table_name: str, source: str) -> None:
+        if self._mode == Modes.OVERWRITE:
+            self._session.conn.sql(f"DROP TABLE IF EXISTS {table_name}")
+
         self._session.conn.sql(
             f"""
             CREATE TEMP TABLE {table_name} AS (
@@ -86,11 +90,25 @@ class DatasetWriter:
         raise NotImplementedError()
 
     def partition_by(self):
-        return self
+        raise NotImplementedError()
 
     def save(self, path: str) -> None:
+        """Writes the data to a specified source, e.g. S3 Bucket
+
+        Note that the `path` must be a path to a storage solution on the provider.
+
+        Args:
+            path, str: The path to store data objects
+
+        Example:
+            >>> dataset = session.sql(query)
+            >>> dataset.write.save(table_name="s3://BUCKET_NAME/test")
+        """
         assert isinstance(path, str), "`path` must be of type string"
-        assert path[:2] == "s3", "`path` must be a S3 bucket"
+        assert path[:2] in ["s3"], "`path` must be a S3 bucket"
+
+        if path[-1] == "/":
+            path = path[:-1]
 
         self._mode.command(self._session.conn, path)
         self._dataset._provider.invoke(
@@ -98,7 +116,18 @@ class DatasetWriter:
         )
 
     def save_as_temp_table(self, table_name: str) -> None:
-        # TODO: Locate where files are stored. ./cache/duckingit?
+        """Writes a temporary table to the open DuckDB connection
+
+        Note that it saves a copy of the data in memory, thus you may run out of memory
+        trying to load in the dataset.
+
+        Args:
+            table_name, str: The name of the table to create.
+
+        Example:
+            >>> dataset = session.sql(query)
+            >>> dataset.write.save_as_temp_table(table_name="test")
+        """
         assert isinstance(table_name, str), "`table_name` must be of type string"
         self._create_tmp_table(
             table_name=table_name, source=self._dataset.default_prefix
@@ -133,7 +162,9 @@ class Dataset:
         self._provider = Providers.AWS.klass(function_name=session._function_name)
 
     def __repr__(self) -> str:
-        return f"Dataset<{self._query.sql}>"
+        return (
+            f"""Dataset<SQL=`{self._query.sql}` | HASH_VALUE=`{self._query.hashed}`>"""
+        )
 
     @property
     def write(self) -> DatasetWriter:
