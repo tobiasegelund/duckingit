@@ -25,41 +25,50 @@ from duckingit._planner import Plan, Step
                 "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*', 's3://BUCKET_NAME/2023/03/*'])"
             ],
         ),
-        # (
-        #     "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
-        #     2,
-        #     [
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
-        #     ],
-        # ),
-        # (
-        #     "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
-        #     3,
-        #     [
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
-        #     ],
-        # ),
-        # (
-        #     "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
-        #     4,
-        #     [
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
-        #     ],
-        # ),
-        # (
-        #     "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
-        #     "auto",
-        #     [
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
-        #         "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
-        #     ],
-        # ),
+        (
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
+            2,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*', 's3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
+        ),
+        (
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
+            3,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
+        ),
+        (
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
+            4,
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
+        ),
+        (
+            "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])",
+            "auto",
+            [
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
+        ),
+        (
+            "SELECT * FROM READ_JSON_AUTO(['s3://BUCKET_NAME/2023/*'])",
+            "auto",
+            [
+                "SELECT * FROM READ_JSON_AUTO(['s3://BUCKET_NAME/2023/01/*'])",
+                "SELECT * FROM READ_JSON_AUTO(['s3://BUCKET_NAME/2023/02/*'])",
+                "SELECT * FROM READ_JSON_AUTO(['s3://BUCKET_NAME/2023/03/*'])",
+            ],
+        ),
     ],
 )
 def test_execution_steps(query, invokations, expected):

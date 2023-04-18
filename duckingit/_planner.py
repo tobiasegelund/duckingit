@@ -23,6 +23,9 @@ class Step:
             ):
                 subquery = subquery.replace(table, f"READ_PARQUET({prefixes})")
 
+            if table[: len("READ_JSON_AUTO")] == "READ_JSON_AUTO":
+                subquery = subquery.replace(table, f"READ_JSON_AUTO({prefixes})")
+
         return cls(subquery=subquery, subquery_hashed=create_md5_hash_string(subquery))
 
 
@@ -51,8 +54,8 @@ class Plan:
                 )
             invokations = len(query.list_of_prefixes)
 
-        # TODO: Heuristic to divide the workload between the invokations based on size of prefixes / number of files etc.
-        # Or based on some deeper analysis of the query?
+        # TODO: Heuristic to divide the workload between the invokations based on size
+        # of prefixes / number of files etc. Or based on some deeper analysis of the query?
         chunks_of_prefixes = split_list_in_chunks(
             query.list_of_prefixes, number_of_invokations=invokations
         )
