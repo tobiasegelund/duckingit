@@ -1,5 +1,4 @@
 import json
-import asyncio
 from typing import Literal
 
 import boto3
@@ -31,27 +30,13 @@ invokation_type parameter."
             InvocationType="RequestResponse",
         )
 
-    def invoke_sync(self, execution_steps: list[Step], prefix: str) -> None:
+    def invoke(self, execution_steps: list[Step], prefix: str) -> None:
         for step in execution_steps:
-            key = prefix + "/" + step.subquery_hashed + ".parquet"
+            key = f"{prefix}/{step.subquery_hashed}.parquet"
             request_payload = json.dumps({"query": step.subquery, "key": key})
-            _ = self._invoke_lambda_sync(request_payload=request_payload)
+            _ = self._invoke_lambda(request_payload=request_payload)
 
-    def invoke_async(self, execution_steps: list[Step], prefix: str):
-        asyncio.run(self._invoke_async(execution_steps=execution_steps, prefix=prefix))
-
-    async def _invoke_async(self, execution_steps: list[Step], prefix: str) -> None:
-        tasks = []
-        for step in execution_steps:
-            key = prefix + "/" + step.subquery_hashed + ".parquet"
-            request_payload = json.dumps({"query": step.subquery, "key": key})
-
-            task = asyncio.create_task(self._invoke_lambda_async(request_payload))
-            tasks.append(task)
-        tasks_to_run = await asyncio.gather(*tasks)
-        return tasks_to_run
-
-    def _invoke_lambda_sync(self, request_payload: str) -> None:
+    def _invoke_lambda(self, request_payload: str) -> None:
         resp = self._client.invoke(
             FunctionName=self.function_name,
             Payload=request_payload,
@@ -60,15 +45,6 @@ invokation_type parameter."
 
         resp_payload = json.loads(resp["Payload"].read().decode("utf-8"))
         self._validate_lambda_response(response=resp_payload)
-
-    async def _invoke_lambda_async(self, request_payload: str) -> None:
-        """Wrapper to make it async"""
-        self._invoke_lambda_sync(request_payload=request_payload)
-
-    def invoke(self, execution_steps: list[Step], prefix: str) -> None:
-        if self.invokation_type == "sync":
-            self.invoke_sync(execution_steps=execution_steps, prefix=prefix)
-        self.invoke_async(execution_steps=execution_steps, prefix=prefix)
 
     def _verify_completion_of_invokations(self):
         # TODO: If running in Event mode, a check to see if all lambda functions have finished must be taken
