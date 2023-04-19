@@ -12,9 +12,3 @@ class Provider:
 
 # class Azure:
 #     pass
-
-
-# class ProviderType(Enum):
-#     AWS = AWS
-#     GCP = GCP
-#     Azure = Azure

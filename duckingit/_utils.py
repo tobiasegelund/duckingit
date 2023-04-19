@@ -55,8 +55,9 @@ def split_list_in_chunks(_list: list[str], number_of_invokations: int) -> list[l
     ]
 
 
-def create_md5_hash_string(string: str) -> str:
-    return hashlib.md5(string.encode(), usedforsecurity=False).hexdigest()
+def create_hash_string(string: str, algorithm: str = "md5") -> str:
+    algo = getattr(hashlib, algorithm)
+    return algo(string.encode(), usedforsecurity=False).hexdigest()
 
 
 def create_unique_name(prefix: str = "__duckingit") -> str:
@@ -90,34 +91,72 @@ def ensure_iterable(value: T | t.Iterable[T]) -> list[T]:
     return value
 
 
-def create_duckdb_conn_with_loaded_httpfs() -> duckdb.DuckDBPyConnection:
+def create_conn_with_httpfs_loaded() -> duckdb.DuckDBPyConnection:
     """Returns a in memory DuckDB connection with httpfs loaded"""
+    from duckingit.integrations import Providers
+
     conn = duckdb.connect(":memory:")
     conn.execute("LOAD httpfs;")
+    conn.execute(Providers.AWS.credentials)
+
     return conn
 
 
-def scan_bucket_for_prefixes(bucket: str) -> list[str]:
-    """Scans the a bucket for prefixes using DuckDB
+def scan_source_for_files(source: str) -> list[str]:
+    """Scans the source for files using DuckDB
 
     Args:
-        bucket, str: The bucket to scan, e.g. s3://BUCKET_NAME/
+        source, str: The source to scan, e.g. s3://BUCKET_NAME/
+
     """
-    conn = create_duckdb_conn_with_loaded_httpfs()
+    conn = create_conn_with_httpfs_loaded()
+
+    if source[-1] == "/":
+        source = source[:-1]
+
+    files = conn.sql(
+        f"SELECT REGEXP_EXTRACT(file, '[0-9a-f]{{32}}') AS file FROM GLOB('{source}/*')"
+    ).fetchall()
+    return flatten_list(files)
+
+
+def scan_source_for_prefixes(source: str) -> list[str]:
+    """Scans the a source for prefixes using DuckDB
+
+    Args:
+        source, str: The source to scan, e.g. s3://source_NAME/
+    """
+    conn = create_conn_with_httpfs_loaded()
 
     # TODO: Count the number of files / size in each prefix to divide the workload better
     glob_query = f"""
         SELECT DISTINCT
             CONCAT(REGEXP_REPLACE(file, '/[^/]+$', ''), '/*') AS prefix
-        FROM GLOB({bucket})
+        FROM GLOB({source})
         """
 
-    try:
-        prefixes = conn.sql(glob_query).fetchall()
-
-    except RuntimeError:
-        raise ValueError(
-            "Please validate that the FROM statement in the query is correct."
-        )
+    prefixes = conn.sql(glob_query).fetchall()
 
     return flatten_list(prefixes)
+
+
+def scan_source_parquet_metadata(source: str) -> list[tuple[str, int]]:
+    """Scans metadata of parquet files at source using DuckDB
+
+    Args:
+        source, str: The source to scan, e.g. s3://BUCKET_NAME/
+
+    """
+    conn = create_conn_with_httpfs_loaded()
+
+    if source[-1] == "/":
+        source = source[:-1]
+
+    query = f"""
+        SELECT file_name, SUM(total_compressed_size) AS bytes
+        FROM  PARQUET_METADATA('{source}/*')
+        GROUP BY file_name
+    """
+
+    files = conn.sql(query).fetchall()
+    return files

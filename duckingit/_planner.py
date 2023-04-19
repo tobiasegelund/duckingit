@@ -1,8 +1,10 @@
+import typing as t
+import copy
 from dataclasses import dataclass
 
 from duckingit._exceptions import WrongInvokationType
 from duckingit._parser import Query
-from duckingit._utils import split_list_in_chunks, create_md5_hash_string
+from duckingit._utils import split_list_in_chunks, create_hash_string
 
 
 @dataclass
@@ -12,6 +14,16 @@ class Step:
 
     @classmethod
     def create(cls, query: Query, prefixes: list[str]):
+        """Creates a step to execute on a serverless function
+
+        Args:
+            query, Query: A query parsed by the Query class
+            prefixes, list[str]: A list of prefixes to scan
+
+        Returns:
+            Step<SUBQUERY | SUBQUERY_HASHED>
+
+        """
         # TODO: Update to use Extension Enum
         subquery = query.copy().sql
         for table in query.tables:
@@ -29,7 +41,10 @@ class Step:
                         table, f"READ_{extension}_AUTO({prefixes})"
                     )
 
-        return cls(subquery=subquery, subquery_hashed=create_md5_hash_string(subquery))
+        return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
+
+    def __repr__(self) -> str:
+        return f"Step<{self.subquery} | {self.subquery_hashed}"
 
 
 class Plan:
@@ -38,6 +53,11 @@ class Plan:
     The execution plan consists of a execution steps based on queries. Basically, the
     class scan the bucket based on the query, divides the workload on the number of
     invokations. Afterwards, its the Controller's job to execute the plan.
+
+    Attributes:
+        query, Query: A query parsed by the Query class
+        execution_steps, list[step]: A list of steps to execute using the serverless
+            function
 
     Methods:
         create_from_query: Creates an execution plan that divides the workload between
@@ -72,26 +92,39 @@ class Plan:
     def __repr__(self) -> str:
         return f"{list(step for step in self.execution_steps)}"
 
+    def copy(self):
+        """Returns a deep copy of the object itself"""
+        return copy.deepcopy(self)
 
+
+@dataclass
 class Operation:
+    dependencies: t.Iterable[str]
+    dependents: t.Iterable[str]
+
+    @classmethod
+    def create(cls):
+        pass
+
+    def add_dependency(self) -> None:
+        pass
+
+
+class Scan(Operation):
     pass
 
 
-class Scan:
+class Sort(Operation):
     pass
 
 
-class Sort:
+class Set(Operation):
     pass
 
 
-class Set:
+class Aggregate(Operation):
     pass
 
 
-class Aggregate:
-    pass
-
-
-class Join:
+class Join(Operation):
     pass

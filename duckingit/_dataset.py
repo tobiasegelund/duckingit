@@ -3,10 +3,10 @@ from enum import Enum
 
 import duckdb
 
-from duckingit._parser import Query
 from duckingit._planner import Plan
 from duckingit._exceptions import DatasetExistError
-from duckingit.integrations import Providers
+from duckingit._controller import Controller
+from duckingit._utils import scan_source_for_files
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
@@ -29,16 +29,16 @@ class Modes(Enum):
 
     @property
     def command(self):
-        def append(conn: duckdb.DuckDBPyConnection, source: str):
-            files = self.scan_source_for_files(conn=conn, source=source)
+        def append(source: str):
+            files = scan_source_for_files(source=source)
             raise NotImplementedError()
 
-        def overwrite(conn: duckdb.DuckDBPyConnection, source: str):
+        def overwrite(source: str):
             # TODO: Drop data at source
             pass
 
-        def write(conn: duckdb.DuckDBPyConnection, source: str) -> None:
-            files = self.scan_source_for_files(conn=conn, source=source)
+        def write(source: str) -> None:
+            files = scan_source_for_files(source=source)
             if len(files) > 0:
                 raise DatasetExistError(f"Table with name `{source}` already exists!")
 
@@ -49,12 +49,6 @@ class Modes(Enum):
         }
 
         return _funcs[self]
-
-    def scan_source_for_files(
-        self, conn: duckdb.DuckDBPyConnection, source: str
-    ) -> list[tuple[str]]:
-        resp = conn.sql(f"SELECT * FROM GLOB('{source}/*')")
-        return resp.fetchall()
 
 
 class Formats(Enum):
@@ -70,14 +64,14 @@ class DatasetWriter:
         self._session = session
         self._dataset = dataset
 
-    def _create_tmp_table(self, table_name: str, source: str) -> None:
+    def _create_tmp_table(self, table_name: str, objects: list[str]) -> None:
         if self._mode == Modes.OVERWRITE:
             self._session.conn.sql(f"DROP TABLE IF EXISTS {table_name}")
 
         self._session.conn.sql(
             f"""
             CREATE TEMP TABLE {table_name} AS (
-                SELECT * FROM READ_PARQUET(['{source}/*'])
+                SELECT * FROM READ_PARQUET({objects})
             )
             """
         )
@@ -102,7 +96,7 @@ class DatasetWriter:
 
         Example:
             >>> dataset = session.sql(query)
-            >>> dataset.write.save(table_name="s3://BUCKET_NAME/test")
+            >>> dataset.write.save(path="s3://BUCKET_NAME/test")
         """
         assert isinstance(path, str), "`path` must be of type string"
         assert path[:2] in ["s3"], "`path` must be a S3 bucket"
@@ -110,16 +104,15 @@ class DatasetWriter:
         if path[-1] == "/":
             path = path[:-1]
 
-        self._mode.command(self._session.conn, path)
-        self._dataset._provider.invoke(
-            execution_steps=self._dataset.execution_plan.execution_steps, prefix=path
-        )
+        self._mode.command(path)
+
+        self._dataset._execute_plan(prefix=path)
 
     def save_as_temp_table(self, table_name: str) -> None:
         """Writes a temporary table to the open DuckDB connection
 
-        Note that it saves a copy of the data in memory, thus you may run out of memory
-        trying to load in the dataset.
+        Be cautious that it saves a local copy of the data in memory, thus you may run
+        out of memory trying to load in the dataset.
 
         Args:
             table_name, str: The name of the table to create.
@@ -129,11 +122,13 @@ class DatasetWriter:
             >>> dataset.write.save_as_temp_table(table_name="test")
         """
         assert isinstance(table_name, str), "`table_name` must be of type string"
+        self._dataset._execute_plan(prefix=self._dataset.default_prefix)
+
         self._create_tmp_table(
-            table_name=table_name, source=self._dataset.default_prefix
+            table_name=table_name, objects=self._dataset.stored_cached_objects
         )
 
-        self._session._metadata[table_name] = self._dataset._query.sql
+        self._session.metadata[table_name] = self._dataset.execution_plan.query.sql
 
 
 class Dataset:
@@ -141,48 +136,51 @@ class Dataset:
     The mapping between data objects in buckets and physical. If cache, then in memory
     locally.
 
-    Unmanaged, managed datasets? Able to apply drop?
-
-    Data source class to handle the connection between bucket and session?
+    Dependency graph of hash values?
     """
 
     _CACHE_PREFIX = ".cache/duckingit"
 
     def __init__(
         self,
-        query: Query,
         execution_plan: Plan,
         session: "DuckSession",
     ) -> None:
-        self._query = query
         self.execution_plan = execution_plan
         self._session = session
 
-        self.default_prefix = f"{query.bucket}/{self._CACHE_PREFIX}/{query.hashed}"
-        self._provider = Providers.AWS.klass(function_name=session._function_name)
+        self._set_controller()
+
+        self.default_prefix = f"{execution_plan.query.bucket}/{self._CACHE_PREFIX}"
 
     def __repr__(self) -> str:
-        return (
-            f"""Dataset<SQL=`{self._query.sql}` | HASH_VALUE=`{self._query.hashed}`>"""
-        )
+        return f"""Dataset<SQL=`{self.execution_plan.query.sql}` | HASH_VALUE=`{self.execution_plan.query.hashed}`>"""
+
+    def _set_controller(self) -> None:
+        self._controller = Controller(session=self._session)
 
     @property
     def write(self) -> DatasetWriter:
         return DatasetWriter(session=self._session, dataset=self)
 
     def drop(self) -> None:
-        pass
+        raise NotImplementedError()
+
+    @property
+    def stored_cached_objects(self) -> list[str]:
+        return list(
+            self.default_prefix + "/" + step.subquery_hashed + ".parquet"
+            for step in self.execution_plan.execution_steps
+        )
+
+    def _execute_plan(self, prefix: str):
+        self._controller.execute_plan(
+            execution_plan=self.execution_plan.copy(), prefix=prefix
+        )
 
     def show(self) -> duckdb.DuckDBPyRelation:
-        self._provider.invoke(
-            execution_steps=self.execution_plan.execution_steps,
-            prefix=self.default_prefix,
-        )
+        self._execute_plan(prefix=self.default_prefix)
 
         return self._session.conn.sql(
-            f"SELECT * FROM read_parquet(['{self.default_prefix}/*'])"
+            f"SELECT * FROM READ_PARQUET({self.stored_cached_objects})"
         )
-
-    def print_shema(self):
-        # SELECT * FROM parquet_schema('test.parquet');
-        pass

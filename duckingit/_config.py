@@ -1,4 +1,4 @@
-from duckingit.integrations import AWS
+from duckingit.integrations import Providers
 
 
 class LambdaConfig:
@@ -6,7 +6,10 @@ class LambdaConfig:
         self.function_name = function_name
 
         self._configs: dict[str, str | int] = {"FunctionName": function_name}
-        self._provider = AWS(function_name=self.function_name)
+        self._provider = Providers.AWS.klass(function_name=self.function_name)
+
+    def __repr__(self) -> str:
+        return f"{self._configs}"
 
     def _change_memory_size(self, memory_size: int) -> None:
         if memory_size < 128 or memory_size > 10_240:
@@ -33,13 +36,26 @@ class LambdaConfig:
 
 
 class DuckConfig:
-    """Class to configure the serverless function"""
+    """Class to store configurations of the session
+
+    DuckConfig can be used to update serverless function's configurations, as well as
+    a max number of invokations and cache expiration time.
+
+    Usage:
+        >>> DuckConfig().memory_size(128).timeout(30).warm_up().update()
+        >>> DuckConfig().max_invokations(100).update()
+    """
 
     def __init__(self, function_name: str = "DuckExecutor") -> None:
         self._function_name = function_name
 
-        self._cache_expiration_time = 60  # 60 minutes default
+        self._max_invokations: int | None = None
+        self._cache_expiration_time = 15  # 10 minutes default
         self._lambda_config = LambdaConfig(function_name=function_name)
+
+    def __repr__(self) -> str:
+        return f"Configurations<CACHE_EXPIRATION_TIME={self._cache_expiration_time} \
+| MAX_INVOKATIONS={self._max_invokations} | LAMBDA_CONFIG={self._lambda_config}>"
 
     def memory_size(self, memory_size: int):
         if not isinstance(memory_size, int):
@@ -58,7 +74,7 @@ class DuckConfig:
         return self
 
     def max_invokations(self, invokations: int):
-        # TODO: Singleton to share configs?
+        # TODO: Move settings to LambdaConfig in order to force .update() to update configs
         if not isinstance(invokations, int):
             raise ValueError(
                 f"Invokations must be an integer - {type(invokations)} was provided"
@@ -66,9 +82,9 @@ class DuckConfig:
         self._max_invokations = invokations
         return self
 
-    def cache_expiration_time(self, time: int = 60):
+    def cache_expiration_time(self, time: int = 15):
         """Expiration time of cached objects in minutes"""
-        # TODO: Singleton to share configs?
+        # TODO: Move settings to LambdaConfig in order to force .update() to update configs
         if not isinstance(time, int):
             raise ValueError(f"Time must be an integer - {type(time)} was provided")
         self._cache_expiration_time = time

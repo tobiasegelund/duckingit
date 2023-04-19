@@ -33,7 +33,6 @@ invokation_type parameter."
 
     def invoke_sync(self, execution_steps: list[Step], prefix: str) -> None:
         for step in execution_steps:
-            # TODO: Allow other naming options than just hashed
             key = prefix + "/" + step.subquery_hashed + ".parquet"
             request_payload = json.dumps({"query": step.subquery, "key": key})
             _ = self._invoke_lambda_sync(request_payload=request_payload)

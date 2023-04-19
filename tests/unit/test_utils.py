@@ -3,7 +3,6 @@ import pytest
 from duckingit._utils import (
     flatten_list,
     ensure_iterable,
-    create_md5_hash_string,
     split_list_in_chunks,
 )
 

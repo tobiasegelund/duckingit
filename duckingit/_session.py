@@ -1,12 +1,13 @@
 import os
+import datetime
 
 import duckdb
 
-from duckingit._controller import LocalController
 from duckingit._config import DuckConfig
 from duckingit._dataset import Dataset
 from duckingit._parser import Query
 from duckingit._planner import Plan
+from duckingit.integrations import Providers
 
 
 class DuckSession:
@@ -22,18 +23,20 @@ class DuckSession:
         metadata, dict: Metadata on temporary tables created using the DuckSession
 
     Methods:
-        execute: Execute a DuckDB SQL query concurrently using X number of invokations
+        sql: Returns a Dataset class with the exection plan stored
+        execute: Creates and execute a Dataset class using .show method to see the result
 
     Usage:
         >>> session = DuckSession()
-        >>> resp = session.execute(query="SELECT * FROM scan_parquet(['s3::/<BUCKET_NAME>/*'])")
+        >>> resp = session.sql(query="SELECT * FROM scan_parquet(['s3::/<BUCKET_NAME>/*'])")
         >>> resp.show()
+
+        >>> session.execute(query="SELECT * FROM scan_parquet(['s3::/<BUCKET_NAME>/*'])")
     """
 
     def __init__(
         self,
         function_name: str = "DuckExecutor",
-        # controller_function: str = "DuckController",
         duckdb_config: dict = {"database": ":memory:", "read_only": False},
         **kwargs,
     ) -> None:
@@ -54,14 +57,10 @@ class DuckSession:
         self._load_httpfs()
         self._set_credentials()
 
-        self._set_controller()
         self._set_conf()
 
-        self._metadata: dict[str, str] = dict()
-
-    @property
-    def metadata(self) -> dict[str, str]:
-        return self._metadata
+        self.metadata: dict[str, str] = dict()
+        self.metadata_cached: dict[str, datetime.datetime] = {}
 
     @property
     def conn(self) -> duckdb.DuckDBPyConnection:
@@ -75,9 +74,6 @@ class DuckSession:
     def conf(self) -> DuckConfig:
         return self._conf
 
-    def _set_controller(self) -> None:
-        self._controller = LocalController(session=self)
-
     def _set_conf(self) -> None:
         self._conf = DuckConfig(function_name=self._function_name)
 
@@ -85,43 +81,51 @@ class DuckSession:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
 
     def _set_credentials(self) -> None:
-        # https://duckdb.org/docs/sql/configuration.html
-        # TODO: Must be more generic to work with other providers
-        self._conn.execute(
-            f"""
-            SET s3_region='{os.getenv("AWS_DEFAULT_REGION", None)}';
-            SET s3_access_key_id='{os.getenv("AWS_ACCESS_KEY_ID", None)}';
-            SET s3_secret_access_key='{os.getenv("AWS_SECRET_ACCESS_KEY", None)}';
-            """
-        )
+        self._conn.execute(Providers.AWS.credentials)
 
     def sql(self, query: str) -> Dataset:
+        """Creates a Dataset to execute against DuckDB instances
+
+        The Dataset can also be configured to save to a specific path or temporary table
+        using the write method of the Dataset class.
+
+        Args:
+            query, str: DuckDB SQL query to run
+
+        Returns:
+            Dataset class
+        """
+
+        # First try DuckDB to see if it can used from there? Will this be confusing?
+        # try:
+        #     self.conn.sql(query)
+        # except Exception as e:
+
         number_of_invokations = "auto"
-        if hasattr(self.conf, "_max_invokations"):
+        if getattr(self.conf, "_max_invokations") is not None:
             number_of_invokations = self.conf._max_invokations
 
-        parsed_query = Query.parse(query)
-        # parsed_query.list_of_prefixes = self.scan_bucket_for_prefixes(
-        #     bucket=parsed_query.source
-        # )
+        if number_of_invokations is None:
+            raise ValueError("Number of invokations cannot be valueNone")
 
+        parsed_query = Query.parse(query)
         execution_plan = Plan.create_from_query(
             query=parsed_query, invokations=number_of_invokations
         )
 
         return Dataset(
-            query=parsed_query,
             execution_plan=execution_plan,
             session=self,
         )
 
     def execute(self, query: str) -> duckdb.DuckDBPyRelation:
-        """Execute the query against a number of serverless functions
+        """Execute the query using DuckDB instances
 
         Args:
             query, str: DuckDB SQL query to run
-            invokations, int | None: The number of invokations of the Lambda function
-                Defaults to 'auto' (See initialization of the session class)
+
+        Returns:
+            A duckdb.DuckDBPyRelation showing the queried data
         """
         dataset = self.sql(query=query)
 

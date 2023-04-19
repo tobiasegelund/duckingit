@@ -8,7 +8,7 @@ import sqlglot.expressions as expr
 from sqlglot.optimizer import optimizer
 
 from duckingit._exceptions import InvalidFilesystem, ParserError
-from duckingit._utils import create_md5_hash_string, scan_bucket_for_prefixes
+from duckingit._utils import create_hash_string, scan_source_for_prefixes
 
 
 @dataclass
@@ -28,14 +28,14 @@ class Query:
 
         return cls(
             sql=query,
-            hashed=create_md5_hash_string(query),
+            hashed=create_hash_string(query),
             expression=expression,
         )
 
     @property
     def list_of_prefixes(self) -> list[str]:
         if self._list_of_prefixes is None:
-            self._list_of_prefixes = scan_bucket_for_prefixes(bucket=self.source)
+            self._list_of_prefixes = scan_source_for_prefixes(source=self.source)
         return self._list_of_prefixes
 
     @property
@@ -61,9 +61,12 @@ class Query:
 
     @property
     def bucket(self) -> str:
-        """Returns the name of the bucket, e.g. s3://bucket-name-test"""
+        """Returns the name of the bucket, e.g. s3://bucket-name-test
+
+        Note that DuckDB uses S3 for GCP as well
+        https://duckdb.org/docs/guides/import/s3_import.html
+        """
         for table in self.tables:
-            # TODO: Generalise the query
             pattern = r"s3:\/\/([A-Za-z0-9_-]+)"
             match = re.search(pattern, str(table))
 
@@ -91,7 +94,7 @@ class Query:
             return match.group(1)
 
         raise InvalidFilesystem(
-            "An acceptable filesystem, e.g. 's3://<BUCKET_NAME>/*', couldn't be \
+            "An acceptable filesystem, e.g. 's3://BUCKET_NAME/*', couldn't be \
 found."
         )
 
