@@ -17,3 +17,11 @@ variable "timeout" {
 variable "memory_size" {
   type = number
 }
+
+variable "sqs_arn_success" {
+  type = string
+}
+
+variable "sqs_arn_failure" {
+  type = string
+}

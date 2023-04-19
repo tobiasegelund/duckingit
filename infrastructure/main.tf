@@ -17,6 +17,15 @@ module "lambda_layer" {
   src = "../image/release/duckdb-layer.zip"
 }
 
+module "sqs" {
+  source = "./modules/sqs"
+
+  delay_seconds             = 90
+  max_message_size          = 2056
+  message_retention_seconds = 900
+  receive_wait_time_seconds = 0
+}
+
 module "lambda_function" {
   source = "./modules/lambda_function"
 
@@ -26,6 +35,9 @@ module "lambda_function" {
   runtime     = "python3.9"
   timeout     = var.timeout
   memory_size = var.memory_size
+
+  sqs_arn_failure = module.sqs.sqs_arn_failure
+  sqs_arn_success = module.sqs.sqs_arn_success
 }
 
 variable "timeout" {

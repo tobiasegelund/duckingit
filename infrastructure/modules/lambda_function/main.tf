@@ -19,7 +19,13 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  for_each   = toset(["arn:aws:iam::aws:policy/AmazonS3FullAccess", "arn:aws:iam::aws:policy/CloudWatchFullAccess"])
+  for_each = toset(
+    [
+      "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+      "arn:aws:iam::aws:policy/CloudWatchFullAccess",
+      "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+    ]
+  )
   role       = aws_iam_role.this.name
   policy_arn = each.value
 }
@@ -46,4 +52,22 @@ resource "aws_lambda_function" "this" {
   ephemeral_storage {
     size = 512
   }
+}
+
+
+resource "aws_lambda_function_event_invoke_config" "this" {
+  function_name          = aws_lambda_function.this.arn
+  maximum_retry_attempts = 0
+  qualifier              = "$LATEST"
+
+  destination_config {
+    on_failure {
+      destination = var.sqs_arn_failure
+    }
+
+    on_success {
+      destination = var.sqs_arn_success
+    }
+  }
+
 }
