@@ -160,3 +160,11 @@ def scan_source_parquet_metadata(source: str) -> list[tuple[str, int]]:
 
     files = conn.sql(query).fetchall()
     return files
+
+
+def cast_attributes_to_string(service_name: str, mapping: dict[str, t.Any]):
+    map_key_with_value = list(
+        ".".join([service_name, k]) + ":" + str(v) for k, v in mapping.items()
+    )
+    repr = "\n".join(map_key_with_value)
+    return repr

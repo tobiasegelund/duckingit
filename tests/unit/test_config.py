@@ -1,6 +1,6 @@
 import pytest
 
-from duckingit._config import DuckConfig, ConfigSingleton
+from duckingit._config import DuckConfig
 from duckingit._exceptions import ConfigurationError
 
 
@@ -15,7 +15,7 @@ from duckingit._exceptions import ConfigurationError
     ],
 )
 def test_DuckConfig_set(name, old_value, new_value):
-    configs = ConfigSingleton()
+    configs = DuckConfig()
 
     assert getattr(configs, name) == old_value
     DuckConfig().set(name, new_value)

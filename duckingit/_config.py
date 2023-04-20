@@ -1,9 +1,14 @@
+"""
+TODO: Perhaps remove hardcoded limits and let boto3 raise the exception
+Trade-off: Fast vs slow response
+"""
 import typing as t
 import copy
 from dataclasses import dataclass
 
 from duckingit.integrations import Providers
 from duckingit._exceptions import ConfigurationError
+from duckingit._utils import cast_attributes_to_string
 
 
 class ServiceConfig:
@@ -18,6 +23,12 @@ class LambdaConfig(ServiceConfig):
     MemorySize: int = 128
     Timeout: int = 30
     WarmUp: bool = False
+
+    def __repr__(self) -> str:
+        repr = cast_attributes_to_string(
+            service_name="aws_lambda", mapping=self.__dict__
+        )
+        return repr
 
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "Timeout":
@@ -73,6 +84,10 @@ class SQSConfig(ServiceConfig):
     DelaySeconds: int = 900
     MaximumMessageSize: int = 2056
     MessageRetentionPeriod: int = 900
+
+    def __repr__(self) -> str:
+        repr = cast_attributes_to_string(service_name="aws_sqs", mapping=self.__dict__)
+        return repr
 
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "MaxNumberOfMessages":
@@ -147,6 +162,10 @@ class SessionConfig(ServiceConfig):
     max_invokations: int = 15
     provider: Providers = Providers.AWS
 
+    def __repr__(self) -> str:
+        repr = cast_attributes_to_string(service_name="session", mapping=self.__dict__)
+        return repr
+
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "cache_expiration_time":
             if not isinstance(value, int):
@@ -174,6 +193,10 @@ class DuckDBConfig(ServiceConfig):
     database: str = ":memory:"
     read_only: bool = False
 
+    def __repr__(self) -> str:
+        repr = cast_attributes_to_string(service_name="duckdb", mapping=self.__dict__)
+        return repr
+
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "database":
             if not isinstance(value, str):
@@ -189,7 +212,12 @@ class DuckDBConfig(ServiceConfig):
         super(DuckDBConfig, self).__setattr__(name, value)
 
 
-class ConfigSingleton(object):
+class DuckConfig:
+    """A class that to store configurations
+
+    Note the class follows the singleton design pattern
+    """
+
     aws_lambda_config = LambdaConfig()
     aws_sqs_config = SQSConfig()
     session_config = SessionConfig()
@@ -197,11 +225,19 @@ class ConfigSingleton(object):
 
     def __new__(cls):
         if not hasattr(cls, "instance"):
-            cls.instance = super(ConfigSingleton, cls).__new__(cls)
+            cls.instance = super(DuckConfig, cls).__new__(cls)
         return cls.instance
 
     def __repr__(self) -> str:
-        return f"{self.__dict__}"
+        repr = "\n".join(
+            [
+                str(self.aws_lambda_config),
+                str(self.aws_sqs_config),
+                str(self.session_config),
+                str(self.duckdb_config),
+            ]
+        )
+        return repr
 
     def __getattr__(self, name: str):
         keys = name.split(".")
@@ -233,18 +269,12 @@ class ConfigSingleton(object):
     def duckdb(self):
         return self.duckdb_config
 
-
-class DuckConfig:
-    config_singleton = ConfigSingleton()
     services_to_be_updated = {}
-
-    def __repr__(self) -> str:
-        return "DuckConfig\n_________\n"
 
     def set(self, name: str, value: t.Any):
         keys = name.split(".")
 
-        service = self.config_singleton
+        service = self
         attr = keys.pop()
 
         # Traverse config tree

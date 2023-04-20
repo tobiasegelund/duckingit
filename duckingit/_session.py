@@ -3,7 +3,7 @@ import datetime
 
 import duckdb
 
-from duckingit._config import DuckConfig, ConfigSingleton
+from duckingit._config import DuckConfig
 from duckingit._dataset import Dataset
 from duckingit._parser import Query
 from duckingit._planner import Plan
@@ -67,8 +67,8 @@ class DuckSession:
     #     pass
 
     @property
-    def conf(self) -> ConfigSingleton:
-        return ConfigSingleton()
+    def conf(self) -> DuckConfig:
+        return DuckConfig()
 
     def _load_httpfs(self) -> None:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")

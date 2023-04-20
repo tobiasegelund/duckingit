@@ -12,10 +12,10 @@ class AWS:
 
     def warm_up_lambda_function(self) -> None:
         """Method to avoid cold starts"""
-        from duckingit._config import ConfigSingleton
+        from duckingit._config import DuckConfig
 
         _ = self.lambda_client.invoke(
-            FunctionName=ConfigSingleton().aws_lambda.FunctionName,
+            FunctionName=DuckConfig().aws_lambda.FunctionName,
             Payload=json.dumps({"WARMUP": 1}),
             InvocationType="RequestResponse",
         )
@@ -31,10 +31,10 @@ class AWS:
         return invokation_ids
 
     def _invoke_lambda(self, request_payload: str):
-        from duckingit._config import ConfigSingleton
+        from duckingit._config import DuckConfig
 
         resp = self.lambda_client.invoke(
-            FunctionName=ConfigSingleton().aws_lambda.FunctionName,
+            FunctionName=DuckConfig().aws_lambda.FunctionName,
             Payload=request_payload,
             InvocationType="Event",  # RequestResponse
         )
@@ -81,9 +81,9 @@ class AWS:
         self._validate_response(response=response)
 
     def poll_messages_from_queue(self, name: str):
-        from duckingit._config import ConfigSingleton
+        from duckingit._config import DuckConfig
 
-        configs = ConfigSingleton()
+        configs = DuckConfig()
 
         receive_request = {
             "QueueUrl": name,
