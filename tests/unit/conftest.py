@@ -21,7 +21,7 @@ class _MockAWS(AWS):
 
 class _MockController(Controller):
     def _set_provider(self):
-        self.provider = _MockAWS(function_name="TestFunc")
+        self.provider = _MockAWS()
 
     def scan_cache_data(self, source: str) -> list[str]:
         return list(
@@ -52,7 +52,7 @@ class _MockDuckConfig(DuckConfig):
 
 class _MockDuckSession(DuckSession):
     def _set_conf(self) -> None:
-        self._conf = _MockDuckConfig(function_name="TestFunc")
+        self._conf = _MockDuckConfig()
 
 
 @pytest.fixture()

@@ -24,10 +24,12 @@ class Controller:
         self.session = session
 
         self._set_provider()
-        self.cache_expiration_time = session.conf._cache_expiration_time
+        self.cache_expiration_time = getattr(
+            session.conf, "session.cache_expiration_time"
+        )
 
     def _set_provider(self):
-        self.provider = Providers.AWS.klass(function_name=self.session._function_name)
+        self.provider = Providers.AWS.klass
 
     def fetch_cache_metadata(self) -> dict[str, datetime.datetime]:
         return self.session.metadata_cached
@@ -40,9 +42,6 @@ class Controller:
 
     def scan_cache_data(self, source: str) -> list[str]:
         return scan_source_for_files(source=source)
-
-    def check_status_of_invokations(self):
-        pass
 
     def evaluate_execution_plan(self, execution_plan: Plan, source: str):
         """Evaluate the execution plan
@@ -83,6 +82,9 @@ class Controller:
             execution_plan=execution_plan, execution_time=execution_time
         )
 
-    def show(self):
-        # Select only X parquet files
+    def check_status_of_invokations(self):
         pass
+
+    # def show(self):
+    #     # Select only X parquet files?
+    #     pass

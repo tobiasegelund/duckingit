@@ -1,98 +1,266 @@
+import typing as t
+import copy
+from dataclasses import dataclass
+
 from duckingit.integrations import Providers
+from duckingit._exceptions import ConfigurationError
 
 
-class LambdaConfig:
-    def __init__(self, function_name: str = "DuckExecutor") -> None:
-        self.function_name = function_name
-
-        self._configs: dict[str, str | int] = {"FunctionName": function_name}
-        self._provider = Providers.AWS.klass(function_name=self.function_name)
-
-    def __repr__(self) -> str:
-        return f"{self._configs}"
-
-    def _change_memory_size(self, memory_size: int) -> None:
-        if memory_size < 128 or memory_size > 10_240:
-            raise ValueError("Memory size must be between 128 or 10,240 MB")
-        self._configs["MemorySize"] = memory_size
-
-    def _change_timeout(self, timeout: int) -> None:
-        if timeout < 3 or timeout > 900:
-            raise ValueError("Timeout must be between 3 or 900 seconds")
-        self._configs["Timeout"] = timeout
-
-    def _warm_up(self) -> None:
-        self._configs["WARMUP"] = True
-
+class ServiceConfig:
     def update(self) -> None:
-        warm_up = False
-        if "WARMUP" in self._configs:
-            warm_up = self._configs.pop("WARMUP")
+        """Update the state of the ConfigSingleton"""
+        pass
 
-        self._provider._update_configurations(configs=self._configs)
+
+@dataclass
+class LambdaConfig(ServiceConfig):
+    FunctionName: str = "DuckExecutor"
+    MemorySize: int = 128
+    Timeout: int = 30
+    WarmUp: bool = False
+
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        if name == "Timeout":
+            lower_limit = 3
+            upper_limit = 900
+            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
+                raise ValueError(
+                    f"`Timeout` must be between {lower_limit} and {upper_limit} seconds"
+                )
+
+        elif name == "MemorySize":
+            lower_limit = 128
+            upper_limit = 10240
+            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
+                raise ValueError(
+                    f"`MemorySize` must be between {lower_limit} and {upper_limit} MB"
+                )
+
+        elif name == "WarmUp":
+            if not isinstance(value, bool):
+                raise ValueError("`WarmUp` must be a boolean")
+
+        elif name == "FunctionName":
+            if not isinstance(value, str):
+                raise ValueError("`FunctionName` must be a string")
+
+        else:
+            raise AttributeError()
+
+        super(LambdaConfig, self).__setattr__(name, value)
+
+    def update(self):
+        config_dict = copy.deepcopy(self.__dict__)
+        warm_up = config_dict.pop("WarmUp")
+
+        Providers.AWS.klass.update_lambda_configurations(config_dict)
 
         if warm_up:
-            self._provider.warm_up()
+            Providers.AWS.klass.warm_up_lambda_function()
+
+
+@dataclass
+class SQSConfig(ServiceConfig):
+    QueueSuccess: str = "DuckSuccess"
+    QueueFailure: str = "DuckFailure"
+
+    # When receiving messages
+    MaxNumberOfMessages: int = 10
+    VisibilityTimeout: int = 5
+    WaitTimeSeconds: int = 5
+
+    # Configs on Queue itself
+    DelaySeconds: int = 900
+    MaximumMessageSize: int = 2056
+    MessageRetentionPeriod: int = 900
+
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        if name == "MaxNumberOfMessages":
+            if not ((value <= 10) and isinstance(value, int)):
+                raise ValueError(
+                    "`MaxNumberOfMessages` must be between 1 and 10 seconds"
+                )
+
+        elif name == "VisibilityTimeout":
+            if not ((value <= 60) and isinstance(value, int)):
+                raise ValueError("`VisibilityTimeout` must be between 0 and 60 seconds")
+
+        elif name == "WaitTimeSeconds":
+            if not ((value <= 60) and isinstance(value, int)):
+                raise ValueError("`WaitTimeSeconds` must be between 0 and 60 seconds")
+
+        elif name == "DelaySeconds":
+            if not ((value <= 900) and isinstance(value, int)):
+                raise ValueError("`DelaySeconds` must be between 0 and 900 seconds")
+
+        elif name == "MaximumMessageSize":
+            lower_limit = 1024
+            upper_limit = 262_144
+            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
+                raise ValueError(
+                    f"`MaximumMessageSize` must be between {lower_limit} and {upper_limit} KiB"
+                )
+
+        elif name == "MessageRetentionPeriod":
+            lower_limit = 60  # 1 minute
+            upper_limit = 1_209_600  # 14 days
+            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
+                raise ValueError(
+                    f"`MessageRetentionPeriod` must be between {lower_limit} and {upper_limit} seconds"
+                )
+
+        elif name == "QueueSuccess":
+            if not isinstance(value, str):
+                raise ValueError("`QueueSuccess` must be a string")
+
+        elif name == "QueueFailure":
+            if not isinstance(value, str):
+                raise ValueError("`QueueFailure` must be a string")
+
+        else:
+            raise AttributeError()
+
+        super(SQSConfig, self).__setattr__(name, value)
+
+    def update(self) -> None:
+        config_dict = {
+            k: v
+            for k, v in self.__dict__.items()
+            if k in ("DelaySeconds", "MaximumMessageSize", "MessageRetentionPeriod")
+        }
+        for name in [self.__dict__["QueueSuccess"], self.__dict__["QueueFailure"]]:
+            Providers.AWS.klass.update_sqs_configurations(
+                name=name, configs=config_dict
+            )
+
+
+# @dataclass
+# class AWSConfig(ServiceConfig):
+#     s3_region: str
+#     s3_access_key_id: str
+#     s3_secret_access_key: str
+
+
+@dataclass
+class SessionConfig(ServiceConfig):
+    cache_expiration_time: int = 15
+    max_invokations: int = 15
+    provider: Providers = Providers.AWS
+
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        if name == "cache_expiration_time":
+            if not isinstance(value, int):
+                raise ValueError("`cache expiration time` must be an integer")
+
+        elif name == "max_invokations":
+            if not isinstance(value, int):
+                raise ValueError("`max invokations` must be an integer")
+
+        elif name == "provider":
+            if not (isinstance(value, str) or isinstance(value, Providers)):
+                raise ValueError("`provider` must be a string")
+
+            if isinstance(value, str):
+                value = Providers(value.lower())
+
+        else:
+            raise AttributeError()
+
+        super(SessionConfig, self).__setattr__(name, value)
+
+
+@dataclass
+class DuckDBConfig(ServiceConfig):
+    database: str = ":memory:"
+    read_only: bool = False
+
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        if name == "database":
+            if not isinstance(value, str):
+                raise ValueError("`database` must be a string")
+
+        elif name == "read_only":
+            if not isinstance(value, bool):
+                raise ValueError("`read only` must be a boolean")
+
+        else:
+            raise AttributeError()
+
+        super(DuckDBConfig, self).__setattr__(name, value)
+
+
+class ConfigSingleton(object):
+    aws_lambda_config = LambdaConfig()
+    aws_sqs_config = SQSConfig()
+    session_config = SessionConfig()
+    duckdb_config = DuckDBConfig()
+
+    def __new__(cls):
+        if not hasattr(cls, "instance"):
+            cls.instance = super(ConfigSingleton, cls).__new__(cls)
+        return cls.instance
+
+    def __repr__(self) -> str:
+        return f"{self.__dict__}"
+
+    def __getattr__(self, name: str):
+        keys = name.split(".")
+        attr = self
+
+        # Traverse config tree
+        try:
+            for key in keys:
+                attr = getattr(attr, key)
+
+        except AttributeError as _:
+            raise ConfigurationError(f"Configuration `{name}` doesn't exists")
+
+        return attr
+
+    @property
+    def aws_lambda(self):
+        return self.aws_lambda_config
+
+    @property
+    def aws_sqs(self):
+        return self.aws_sqs_config
+
+    @property
+    def session(self):
+        return self.session_config
+
+    @property
+    def duckdb(self):
+        return self.duckdb_config
 
 
 class DuckConfig:
-    """Class to store configurations of the session
-
-    DuckConfig can be used to update serverless function's configurations, as well as
-    a max number of invokations and cache expiration time.
-
-    Usage:
-        >>> DuckConfig().memory_size(128).timeout(30).warm_up().update()
-        >>> DuckConfig().max_invokations(100).update()
-    """
-
-    def __init__(self, function_name: str = "DuckExecutor") -> None:
-        self._function_name = function_name
-
-        self._max_invokations: int | None = None
-        self._cache_expiration_time = 15  # 10 minutes default
-        self._lambda_config = LambdaConfig(function_name=function_name)
+    config_singleton = ConfigSingleton()
+    services_to_be_updated = {}
 
     def __repr__(self) -> str:
-        return f"Configurations<CACHE_EXPIRATION_TIME={self._cache_expiration_time} \
-| MAX_INVOKATIONS={self._max_invokations} | LAMBDA_CONFIG={self._lambda_config}>"
+        return "DuckConfig\n_________\n"
 
-    def memory_size(self, memory_size: int):
-        if not isinstance(memory_size, int):
-            raise ValueError(
-                f"Memory size must be an integer - {type(memory_size)} was provided"
-            )
-        self._lambda_config._change_memory_size(memory_size=memory_size)
-        return self
+    def set(self, name: str, value: t.Any):
+        keys = name.split(".")
 
-    def timeout(self, timeout: int):
-        if not isinstance(timeout, int):
-            raise ValueError(
-                f"Timeout must be an integer - {type(timeout)} was provided"
-            )
-        self._lambda_config._change_timeout(timeout=timeout)
-        return self
+        service = self.config_singleton
+        attr = keys.pop()
 
-    def max_invokations(self, invokations: int):
-        # TODO: Move settings to LambdaConfig in order to force .update() to update configs
-        if not isinstance(invokations, int):
-            raise ValueError(
-                f"Invokations must be an integer - {type(invokations)} was provided"
-            )
-        self._max_invokations = invokations
-        return self
+        # Traverse config tree
+        try:
+            for key in keys:
+                service = getattr(service, key)
 
-    def cache_expiration_time(self, time: int = 15):
-        """Expiration time of cached objects in minutes"""
-        # TODO: Move settings to LambdaConfig in order to force .update() to update configs
-        if not isinstance(time, int):
-            raise ValueError(f"Time must be an integer - {type(time)} was provided")
-        self._cache_expiration_time = time
-        return self
+            setattr(service, attr, value)
+        except AttributeError as _:
+            raise ConfigurationError(f"Configuration `{name}` doesn't exists")
 
-    def warm_up(self):
-        self._lambda_config._warm_up()
+        key = ".".join(keys)  # Concat list of keys without the attr
+        self.services_to_be_updated[key] = service
+
         return self
 
     def update(self):
-        self._lambda_config.update()
+        for _, service in self.services_to_be_updated.items():
+            service.update()

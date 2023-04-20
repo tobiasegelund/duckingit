@@ -21,7 +21,7 @@ def test_evaluate_execution_plan(
     MockPlan,
 ):
     session = MockDuckSession()
-    session.conf.cache_expiration_time(expiration_time)
+    session.conf.session.cache_expiration_time = expiration_time
     controller = MockController(session=session)
 
     controller.fetch_cache_metadata = MagicMock(return_value=cached_objects)

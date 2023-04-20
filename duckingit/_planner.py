@@ -97,6 +97,10 @@ class Plan:
         return copy.deepcopy(self)
 
 
+class Stage:
+    pass
+
+
 @dataclass
 class Operation:
     dependencies: t.Iterable[str]

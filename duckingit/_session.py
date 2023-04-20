@@ -3,7 +3,7 @@ import datetime
 
 import duckdb
 
-from duckingit._config import DuckConfig
+from duckingit._config import DuckConfig, ConfigSingleton
 from duckingit._dataset import Dataset
 from duckingit._parser import Query
 from duckingit._planner import Plan
@@ -22,7 +22,7 @@ class DuckSession:
         conn, duckdb.DuckDBPyConnection: The initialized DuckDB connection
         metadata, dict: Metadata on temporary tables created using the DuckSession
 
-    Methods:
+    Methods: TODO: Switch the methods logic? Perhaps more logical
         sql: Returns a Dataset class with the exection plan stored
         execute: Creates and execute a Dataset class using .show method to see the result
 
@@ -36,28 +36,24 @@ class DuckSession:
 
     def __init__(
         self,
-        function_name: str = "DuckExecutor",
-        duckdb_config: dict = {"database": ":memory:", "read_only": False},
+        conf: DuckConfig | None = None,
         **kwargs,
     ) -> None:
         """Session of serverless DuckDB instances
 
         Args:
-            function_name, str: The name of the serverless function
-                Defaults to "DuckExecutor"
-            duckdb_config, dict: DuckDB configurations of the connection. Please take a
-                look on their documention. Defaults to {"database": ":memory:",
-                "read_only": False}
+            conf, DuckConfig: A collection of configuration settings defined using
+                the class DuckConfig
             **kwargs
         """
-        self._function_name = function_name
+        if not conf is None:
+            conf.update()  # Update configuration settings
+
         self._kwargs = kwargs
 
-        self._conn = duckdb.connect(**duckdb_config)
+        self._conn = duckdb.connect(**self.conf.duckdb.__dict__)
         self._load_httpfs()
         self._set_credentials()
-
-        self._set_conf()
 
         self.metadata: dict[str, str] = dict()
         self.metadata_cached: dict[str, datetime.datetime] = {}
@@ -71,11 +67,8 @@ class DuckSession:
     #     pass
 
     @property
-    def conf(self) -> DuckConfig:
-        return self._conf
-
-    def _set_conf(self) -> None:
-        self._conf = DuckConfig(function_name=self._function_name)
+    def conf(self) -> ConfigSingleton:
+        return ConfigSingleton()
 
     def _load_httpfs(self) -> None:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
@@ -83,7 +76,7 @@ class DuckSession:
     def _set_credentials(self) -> None:
         self._conn.execute(Providers.AWS.credentials)
 
-    def sql(self, query: str) -> Dataset:
+    def sql(self, query: str) -> Dataset | duckdb.DuckDBPyRelation:
         """Creates a Dataset to execute against DuckDB instances
 
         The Dataset can also be configured to save to a specific path or temporary table
@@ -93,30 +86,30 @@ class DuckSession:
             query, str: DuckDB SQL query to run
 
         Returns:
-            Dataset class
+            Dataset or duckdb.DuckDBPyRelation if the data already exists in memeory
         """
 
         # First try DuckDB to see if it can used from there? Will this be confusing?
-        # try:
-        #     self.conn.sql(query)
-        # except Exception as e:
+        try:
+            return self.conn.sql(query)
 
-        number_of_invokations = "auto"
-        if getattr(self.conf, "_max_invokations") is not None:
-            number_of_invokations = self.conf._max_invokations
+        except Exception as _:
+            number_of_invokations = "auto"
+            if getattr(self.conf, "session.max_invokations") is not None:
+                number_of_invokations = self.conf.session.max_invokations
 
-        if number_of_invokations is None:
-            raise ValueError("Number of invokations cannot be valueNone")
+            if number_of_invokations is None:
+                raise ValueError("Number of invokations cannot be None")
 
-        parsed_query = Query.parse(query)
-        execution_plan = Plan.create_from_query(
-            query=parsed_query, invokations=number_of_invokations
-        )
+            parsed_query = Query.parse(query)
+            execution_plan = Plan.create_from_query(
+                query=parsed_query, invokations=number_of_invokations
+            )
 
-        return Dataset(
-            execution_plan=execution_plan,
-            session=self,
-        )
+            return Dataset(
+                execution_plan=execution_plan,
+                session=self,
+            )
 
     def execute(self, query: str) -> duckdb.DuckDBPyRelation:
         """Execute the query using DuckDB instances
@@ -128,5 +121,8 @@ class DuckSession:
             A duckdb.DuckDBPyRelation showing the queried data
         """
         dataset = self.sql(query=query)
+
+        if isinstance(dataset, duckdb.DuckDBPyRelation):
+            return dataset
 
         return dataset.show()

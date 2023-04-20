@@ -14,8 +14,7 @@ class Providers(Enum):
         providers = {self.AWS: AWS}
 
         try:
-            # _klass = providers[self]
-            return providers[self]
+            return providers[self]()
 
         except KeyError:
             raise NotImplementedError("Currently, it's only implemented for AWS Lambda")

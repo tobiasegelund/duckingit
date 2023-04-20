@@ -6,7 +6,7 @@ class InvalidFilesystem(Exception):
     pass
 
 
-class MisConfigurationError(Exception):
+class ConfigurationError(Exception):
     pass
 
 
