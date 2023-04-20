@@ -1,12 +1,18 @@
 import datetime
+import time
 import typing as t
 
-from duckingit._planner import Plan
+from duckingit._planner import Plan, Step
 from duckingit.integrations import Providers
 from duckingit._utils import scan_source_for_files
+from duckingit._exceptions import FailedLambdaFunctions
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
+
+
+SECONDS_TO_CHECK_FAILED = 2
+SECONDS_TO_FAIL_OPERATION = 900  # 15 minutes
 
 
 class Controller:
@@ -74,16 +80,32 @@ class Controller:
 
         execution_time = datetime.datetime.now()
         if len(execution_plan.execution_steps) > 0:
-            self.provider.invoke(
+            request_ids = self.provider.invoke(
                 execution_steps=execution_plan.execution_steps, prefix=prefix
             )
+
+            self.check_status_of_invokations(request_ids=request_ids)
 
         self.update_cache_metadata(
             execution_plan=execution_plan, execution_time=execution_time
         )
 
-    def check_status_of_invokations(self):
-        pass
+    def check_status_of_invokations(self, request_ids: dict[str, Step]):
+        while len(request_ids) > 0:
+            success_ids = self.provider.poll_messages_from_success_queue()
+
+            for _id in success_ids:
+                request_ids.pop(_id)
+
+            if time.time() % SECONDS_TO_CHECK_FAILED == 0:
+                failure_ids = self.provider.poll_messages_from_failure_queue()
+
+                if len(failure_ids) > 0:
+                    # failed_items = list(request_ids.get(i) for i in failure_ids)
+                    FailedLambdaFunctions()
+
+            if time.time() % SECONDS_TO_FAIL_OPERATION == 0:
+                raise FailedLambdaFunctions()
 
     # def show(self):
     #     # Select only X parquet files?

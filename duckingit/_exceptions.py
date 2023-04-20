@@ -16,3 +16,7 @@ class ParserError(Exception):
 
 class DatasetExistError(Exception):
     pass
+
+
+class FailedLambdaFunctions(Exception):
+    pass

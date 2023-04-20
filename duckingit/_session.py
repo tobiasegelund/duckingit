@@ -76,7 +76,7 @@ class DuckSession:
     def _set_credentials(self) -> None:
         self._conn.execute(Providers.AWS.credentials)
 
-    def sql(self, query: str) -> Dataset | duckdb.DuckDBPyRelation:
+    def sql(self, query: str) -> Dataset:
         """Creates a Dataset to execute against DuckDB instances
 
         The Dataset can also be configured to save to a specific path or temporary table
@@ -90,26 +90,22 @@ class DuckSession:
         """
 
         # First try DuckDB to see if it can used from there? Will this be confusing?
-        try:
-            return self.conn.sql(query)
+        number_of_invokations = "auto"
+        if getattr(self.conf, "session.max_invokations") is not None:
+            number_of_invokations = self.conf.session.max_invokations
 
-        except Exception as _:
-            number_of_invokations = "auto"
-            if getattr(self.conf, "session.max_invokations") is not None:
-                number_of_invokations = self.conf.session.max_invokations
+        if number_of_invokations is None:
+            raise ValueError("Number of invokations cannot be None")
 
-            if number_of_invokations is None:
-                raise ValueError("Number of invokations cannot be None")
+        parsed_query = Query.parse(query)
+        execution_plan = Plan.create_from_query(
+            query=parsed_query, invokations=number_of_invokations
+        )
 
-            parsed_query = Query.parse(query)
-            execution_plan = Plan.create_from_query(
-                query=parsed_query, invokations=number_of_invokations
-            )
-
-            return Dataset(
-                execution_plan=execution_plan,
-                session=self,
-            )
+        return Dataset(
+            execution_plan=execution_plan,
+            session=self,
+        )
 
     def execute(self, query: str) -> duckdb.DuckDBPyRelation:
         """Execute the query using DuckDB instances
@@ -121,8 +117,5 @@ class DuckSession:
             A duckdb.DuckDBPyRelation showing the queried data
         """
         dataset = self.sql(query=query)
-
-        if isinstance(dataset, duckdb.DuckDBPyRelation):
-            return dataset
 
         return dataset.show()

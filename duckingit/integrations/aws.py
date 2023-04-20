@@ -21,14 +21,14 @@ class AWS:
         )
 
     def invoke(self, execution_steps: list[Step], prefix: str) -> dict[str, Step]:
-        invokation_ids = {}
+        request_ids = {}
         for step in execution_steps:
             key = f"{prefix}/{step.subquery_hashed}.parquet"
             request_payload = json.dumps({"query": step.subquery, "key": key})
-            invokatin_id = self._invoke_lambda(request_payload=request_payload)
+            request_id = self._invoke_lambda(request_payload=request_payload)
 
-            invokation_ids[invokatin_id] = step
-        return invokation_ids
+            request_ids[request_id] = step
+        return request_ids
 
     def _invoke_lambda(self, request_payload: str):
         from duckingit._config import DuckConfig
@@ -80,7 +80,20 @@ class AWS:
         )
         self._validate_response(response=response)
 
-    def poll_messages_from_queue(self, name: str):
+    def _collect_request_id_from_queue_message(self, message: dict) -> str:
+        request_id = (
+            json.loads(message.get("Body")).get("requestContext").get("requestId")
+        )
+        return request_id
+
+    def _delete_message_from_sqs_queue(self, name: str, receipt: str) -> None:
+        delete_request = {
+            "QueueUrl": name,
+            "ReceiptHandle": receipt,
+        }
+        self.sqs_client.delete_message(**delete_request)
+
+    def poll_messages_from_queue(self, name: str, delete_message: bool) -> list[str]:
         from duckingit._config import DuckConfig
 
         configs = DuckConfig()
@@ -91,23 +104,40 @@ class AWS:
             "VisibilityTimeout": configs.aws_sqs.VisibilityTimeout,
             "WaitTimeSeconds": configs.aws_sqs.WaitTimeSeconds,
         }
-
-        # Receive messages from the queue
         response = self.sqs_client.receive_message(**receive_request)
 
-        # Process the messages
+        request_ids = []
         if "Messages" in response:
             messages = response["Messages"]
             for message in messages:
-                print(message["Body"])
-                # Delete the message from the queue
-                delete_request = {
-                    "QueueUrl": name,
-                    "ReceiptHandle": message["ReceiptHandle"],
-                }
-                self.sqs_client.delete_message(**delete_request)
-        else:
-            print("No messages in the queue")
+                request_ids.append(self._collect_request_id_from_queue_message(message))
+
+                if delete_message:
+                    self._delete_message_from_sqs_queue(
+                        name=name, receipt=message["ReceiptHandle"]
+                    )
+
+        return request_ids
+
+    def poll_messages_from_success_queue(
+        self, delete_message: bool = True
+    ) -> list[str]:
+        from duckingit._config import DuckConfig
+
+        configs = DuckConfig()
+        return self.poll_messages_from_queue(
+            name=configs.aws_sqs.QueueSuccess, delete_message=delete_message
+        )
+
+    def poll_messages_from_failure_queue(
+        self, delete_message: bool = False
+    ) -> list[str]:
+        from duckingit._config import DuckConfig
+
+        configs = DuckConfig()
+        return self.poll_messages_from_queue(
+            name=configs.aws_sqs.QueueFailure, delete_message=delete_message
+        )
 
     def purge_queue(self, url: str) -> None:
         """Deletes all available messages in queue"""
