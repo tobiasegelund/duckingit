@@ -14,4 +14,3 @@ resource "aws_sqs_queue" "success" {
   message_retention_seconds = var.message_retention_seconds # 15 minutes
   receive_wait_time_seconds = var.receive_wait_time_seconds # a value between 0 and 20 seconds
 }
-

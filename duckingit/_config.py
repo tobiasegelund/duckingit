@@ -79,7 +79,7 @@ class SQSConfig(ServiceConfig):
     WaitTimeSeconds: int = 5
 
     # Configs on Queue itself
-    DelaySeconds: int = 900
+    DelaySeconds: int = 0
     MaximumMessageSize: int = 2056
     MessageRetentionPeriod: int = 900
 

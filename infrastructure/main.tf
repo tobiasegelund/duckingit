@@ -20,7 +20,7 @@ module "lambda_layer" {
 module "sqs" {
   source = "./modules/sqs"
 
-  delay_seconds             = 90
+  delay_seconds             = 0
   max_message_size          = 2056
   message_retention_seconds = 900
   receive_wait_time_seconds = 0
