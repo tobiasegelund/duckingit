@@ -135,7 +135,7 @@ class SQSConfig(ServiceConfig):
 
     def update(self) -> None:
         config_dict = {
-            k: v
+            k: str(v)
             for k, v in self.__dict__.items()
             if k in ("DelaySeconds", "MaximumMessageSize", "MessageRetentionPeriod")
         }
