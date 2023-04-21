@@ -50,8 +50,7 @@ def split_list_in_chunks(_list: list[str], number_of_invokations: int) -> list[l
 
     k, m = divmod(len(_list), number_of_invokations)
     return [
-        _list[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
-        for i in range(number_of_invokations)
+        _list[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(number_of_invokations)
     ]
 
 
@@ -162,7 +161,7 @@ def scan_source_parquet_metadata(source: str) -> list[tuple[str, int]]:
     return files
 
 
-def cast_attributes_to_string(service_name: str, mapping: dict[str, t.Any]):
+def cast_mapping_to_string_with_newlines(service_name: str, mapping: dict[str, t.Any]):
     map_key_with_value = list(
         ".".join([service_name, k]) + ":" + str(v) for k, v in mapping.items()
     )
