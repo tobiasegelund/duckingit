@@ -45,7 +45,7 @@ class DuckSession:
                 the class DuckConfig
             **kwargs
         """
-        if not conf is None:
+        if conf is not None:
             conf.update()  # Update configuration settings
 
         self._kwargs = kwargs

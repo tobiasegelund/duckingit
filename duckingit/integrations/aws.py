@@ -51,9 +51,7 @@ class AWS:
 
         unwrap = unwrap.get(field, None)
         if unwrap is None:
-            raise ValueError(
-                f"Couldn't unwrap the response - `{field}` isn't in the message"
-            )
+            raise ValueError(f"Couldn't unwrap the response - `{field}` isn't in the message")
 
         return unwrap
 
@@ -63,10 +61,8 @@ class AWS:
                 200,
                 202,
             ]:
-                raise ValueError(
-                    f"{response.get('statusCode')}: {response.get('errorMessage')}"
-                )
-        except KeyError as _:
+                raise ValueError(f"{response.get('statusCode')}: {response.get('errorMessage')}")
+        except KeyError:
             raise ConfigurationError(response)
 
     def update_lambda_configurations(self, configs: dict) -> None:
@@ -75,25 +71,21 @@ class AWS:
         self._validate_response(response=response)
 
     def update_sqs_configurations(self, name: str, configs: dict) -> None:
-        response = self.sqs_client.set_queue_attributes(
-            QueueUrl=name, Attributes=configs
-        )
+        response = self.sqs_client.set_queue_attributes(QueueUrl=name, Attributes=configs)
         self._validate_response(response=response)
 
-    def _collect_request_id_from_queue_message(self, message: dict) -> str:
-        request_id = (
-            json.loads(message.get("Body")).get("requestContext").get("requestId")
-        )
+    def _unwrap_request_id_from_queue_message(self, message: dict) -> str:
+        request_id = json.loads(message.get("Body")).get("requestContext").get("requestId")
         return request_id
 
-    def _delete_message_from_sqs_queue(self, name: str, receipt: str) -> None:
+    def _delete_messages_from_sqs_queue(self, name: str, entries: list(dict[str, str])) -> None:
         delete_request = {
             "QueueUrl": name,
-            "ReceiptHandle": receipt,
+            "Entries": entries,
         }
-        self.sqs_client.delete_message(**delete_request)
+        self.sqs_client.Entries(**delete_request)
 
-    def poll_messages_from_queue(self, name: str, delete_message: bool) -> list[str]:
+    def poll_messages_from_queue(self, name: str, delete_messages: bool) -> list[str]:
         from duckingit._config import DuckConfig
 
         configs = DuckConfig()
@@ -107,38 +99,28 @@ class AWS:
         response = self.sqs_client.receive_message(**receive_request)
 
         request_ids = []
+        entries = list()
         if "Messages" in response:
             messages = response["Messages"]
             for message in messages:
-                request_ids.append(self._collect_request_id_from_queue_message(message))
+                request_ids.append(self._unwrap_request_id_from_queue_message(message))
+                entries.append({message.get("MessageId"): message.get("ReceiptHandle")})
 
-                if delete_message:
-                    self._delete_message_from_sqs_queue(
-                        name=name, receipt=message["ReceiptHandle"]
-                    )
+        if delete_messages:
+            self._delete_messages_from_sqs_queue(name=name, entries=entries)
 
         return request_ids
 
-    def poll_messages_from_success_queue(
-        self, delete_message: bool = True
-    ) -> list[str]:
+    def poll_messages_from_success_queue(self, delete_messages: bool = True) -> list[str]:
         from duckingit._config import DuckConfig
 
-        configs = DuckConfig()
         return self.poll_messages_from_queue(
-            name=configs.aws_sqs.QueueSuccess, delete_message=delete_message
+            name=DuckConfig().aws_sqs.QueueSuccess, delete_messages=delete_messages
         )
 
-    def poll_messages_from_failure_queue(
-        self, delete_message: bool = False
-    ) -> list[str]:
+    def poll_messages_from_failure_queue(self, delete_messages: bool = False) -> list[str]:
         from duckingit._config import DuckConfig
 
-        configs = DuckConfig()
         return self.poll_messages_from_queue(
-            name=configs.aws_sqs.QueueFailure, delete_message=delete_message
+            name=DuckConfig().aws_sqs.QueueFailure, delete_messages=delete_messages
         )
-
-    def purge_queue(self, url: str) -> None:
-        """Deletes all available messages in queue"""
-        self.sqs_client.purge_queue(url)

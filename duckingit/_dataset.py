@@ -30,7 +30,6 @@ class Modes(Enum):
     @property
     def command(self):
         def append(source: str):
-            files = scan_source_for_files(source=source)
             raise NotImplementedError()
 
         def overwrite(source: str):
@@ -124,9 +123,7 @@ class DatasetWriter:
         assert isinstance(table_name, str), "`table_name` must be of type string"
         self._dataset._execute_plan(prefix=self._dataset.default_prefix)
 
-        self._create_tmp_table(
-            table_name=table_name, objects=self._dataset.stored_cached_objects
-        )
+        self._create_tmp_table(table_name=table_name, objects=self._dataset.stored_cached_objects)
 
         self._session.metadata[table_name] = self._dataset.execution_plan.query.sql
 
@@ -174,13 +171,9 @@ class Dataset:
         )
 
     def _execute_plan(self, prefix: str):
-        self._controller.execute_plan(
-            execution_plan=self.execution_plan.copy(), prefix=prefix
-        )
+        self._controller.execute_plan(execution_plan=self.execution_plan.copy(), prefix=prefix)
 
     def show(self) -> duckdb.DuckDBPyRelation:
         self._execute_plan(prefix=self.default_prefix)
 
-        return self._session.conn.sql(
-            f"SELECT * FROM READ_PARQUET({self.stored_cached_objects})"
-        )
+        return self._session.conn.sql(f"SELECT * FROM READ_PARQUET({self.stored_cached_objects})")

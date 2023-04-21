@@ -242,7 +242,7 @@ class DuckConfig:
             for key in keys:
                 attr = getattr(attr, key)
 
-        except AttributeError as _:
+        except AttributeError:
             raise ConfigurationError(f"Configuration `{name}` doesn't exists")
 
         return attr
@@ -277,7 +277,7 @@ class DuckConfig:
                 service = getattr(service, key)
 
             setattr(service, attr, value)
-        except AttributeError as _:
+        except AttributeError:
             raise ConfigurationError(f"Configuration `{name}` doesn't exists")
 
         key = ".".join(keys)  # Concat list of keys without the attr

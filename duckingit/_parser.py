@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 import sqlglot
 import sqlglot.expressions as expr
-from sqlglot.optimizer import optimizer
+
+# from sqlglot.optimizer import optimizer
 
 from duckingit._exceptions import InvalidFilesystem, ParserError
 from duckingit._utils import create_hash_string, scan_source_for_prefixes
