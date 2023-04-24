@@ -36,19 +36,27 @@ Once you have verified the above components, the infrastructure should be set up
 The developer API is inspired by the API of Spark, but it uses Python's naming conventions because the framework is implemented in Python.
 
 ```python
-from duckingit import DuckSession
+from duckingit import DuckSession, DuckConfig
 
 query = "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/*'])"
 
+# Following command will print possible configurations
+DuckConfig.show_configurations
+
+# Configuration
+conf = DuckConfig() \
+        .set("aws_lambda.FunctionName", "TestFunc") \
+        .set("aws_lambda.MemorySize", 256) \
+        .set("aws_lambda.WarmUp", True)
+
 # Creates an entrypoint to use serverless DuckDB instances
-session = DuckSession()
+session = DuckSession(conf=conf)
 
-# Updates the Lambda function with 128 MB memory size and 30 timeout
-# as well as initializing the Lambda function to avoid cold start
-session.conf.memory_size(128).timeout(30).warm_up().update()
+# Create a Dataset from the query
+ds = session.sql(query=query)
 
-# Execute the command
-session.execute(query=query)
+# Execute SQL query
+ds.show()
 ```
 
 ... To be continued
