@@ -37,14 +37,12 @@ class Step:
 
             for extension in ["JSON", "CSV"]:
                 if table[: len(f"READ_{extension}_AUTO")] == f"READ_{extension}_AUTO":
-                    subquery = subquery.replace(
-                        table, f"READ_{extension}_AUTO({prefixes})"
-                    )
+                    subquery = subquery.replace(table, f"READ_{extension}_AUTO({prefixes})")
 
         return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
 
     def __repr__(self) -> str:
-        return f"Step<{self.subquery} | {self.subquery_hashed}"
+        return f"Step<QUERY='{self.subquery}' | HASH='{self.subquery_hashed}'>"
 
 
 class Plan:
@@ -68,13 +66,14 @@ class Plan:
         self.query = query
         self.execution_steps = execution_steps
 
+    def __len__(self) -> int:
+        return len(self.execution_steps)
+
     @classmethod
     def create_from_query(cls, query: Query, invokations: int | str):
         if isinstance(invokations, str):
             if invokations != "auto":
-                raise WrongInvokationType(
-                    "`invokations` can only be 'auto' or an integer"
-                )
+                raise WrongInvokationType("`invokations` can only be 'auto' or an integer")
             invokations = len(query.list_of_prefixes)
 
         # TODO: Heuristic to divide the workload between the invokations based on size

@@ -47,7 +47,7 @@ class Controller:
     def scan_cache_data(self, source: str) -> list[str]:
         return scan_source_for_files(source=source)
 
-    def evaluate_execution_plan(self, execution_plan: Plan, source: str):
+    def evaluate_execution_plan(self, execution_plan: Plan, source: str) -> None:
         """Evaluate the execution plan
 
         For example filter cached objects to minimize compute power
@@ -55,7 +55,7 @@ class Controller:
         cached_objects = self.scan_cache_data(source=source)
         session_cache_metadata = self.fetch_cache_metadata()
 
-        for idx, step in enumerate(execution_plan.execution_steps):
+        for step in execution_plan.execution_steps[:]:
             last_executed = session_cache_metadata.get(step.subquery_hashed, None)
 
             if last_executed is None:
@@ -69,11 +69,10 @@ class Controller:
                 last_executed_minutes < self.cache_expiration_time
                 and step.subquery_hashed in cached_objects
             ):
-                execution_plan.execution_steps.pop(idx)
+                execution_plan.execution_steps.remove(step)
 
     def execute_plan(self, execution_plan: Plan, prefix: str):
         """Executes the execution plan"""
-
         self.evaluate_execution_plan(execution_plan=execution_plan, source=prefix)
 
         execution_time = datetime.datetime.now()
@@ -87,9 +86,8 @@ class Controller:
         self.update_cache_metadata(execution_plan=execution_plan, execution_time=execution_time)
 
     def check_status_of_invokations(self, request_ids: dict[str, Step]):
-        from duckingit._config import DuckConfig
-
-        configs = DuckConfig()
+        success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
+        failure_queue = getattr(self.session.conf, "aws_sqs.QueueFailure")
 
         cnt = 0
 
@@ -98,7 +96,7 @@ class Controller:
             if cnt < len(WAIT_TIME_SUCCESS_QUEUE_SECONDS):
                 wait_time = WAIT_TIME_SUCCESS_QUEUE_SECONDS[cnt]
             messages = self.provider.poll_messages_from_queue(
-                name=configs.aws_sqs.QueueSuccess, wait_time_seconds=wait_time
+                name=success_queue, wait_time_seconds=wait_time
             )
             if len(messages) > 0:
                 for message in messages:
@@ -108,15 +106,13 @@ class Controller:
                         continue
 
                 entries = list(message.create_entry_payload() for message in messages)
-                self.provider.delete_messages_from_sqs_queue(
-                    name=configs.aws_sqs.QueueSuccess, entries=entries
-                )
+                self.provider.delete_messages_from_sqs_queue(name=success_queue, entries=entries)
 
             cnt += 1
 
             if cnt % ITERATIONS_TO_CHECK_FAILED == 0:
                 messages = self.provider.poll_messages_from_queue(
-                    name=configs.aws_sqs.QueueFailure,
+                    name=failure_queue,
                     wait_time_seconds=WAIT_TIME_FAILURE_QUEUE_SECONDS,
                 )
 
