@@ -222,17 +222,6 @@ class DuckConfig:
             cls.instance = super(DuckConfig, cls).__new__(cls)
         return cls.instance
 
-    def __repr__(self) -> str:
-        repr = "\n".join(
-            [
-                str(self.aws_lambda_config),
-                str(self.aws_sqs_config),
-                str(self.session_config),
-                str(self.duckdb_config),
-            ]
-        )
-        return repr
-
     def __getattr__(self, name: str):
         keys = name.split(".")
         attr = self
@@ -246,6 +235,19 @@ class DuckConfig:
             raise ConfigurationError(f"Configuration `{name}` doesn't exists")
 
         return attr
+
+    @classmethod
+    @property
+    def show_configurations(cls):
+        repr = "\n".join(
+            [
+                str(cls.aws_lambda_config),
+                str(cls.aws_sqs_config),
+                str(cls.session_config),
+                str(cls.duckdb_config),
+            ]
+        )
+        print(repr)
 
     @property
     def aws_lambda(self):

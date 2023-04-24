@@ -1,5 +1,4 @@
 import datetime
-import time
 import typing as t
 
 from duckingit._planner import Plan, Step
@@ -11,8 +10,9 @@ if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
 
 
-SECONDS_TO_CHECK_FAILED = 2
-SECONDS_TO_FAIL_OPERATION = 900  # 15 minutes
+ITERATIONS_TO_CHECK_FAILED = 5
+WAIT_TIME_SUCCESS_QUEUE_SECONDS = [1, 1, 2, 4, 6]
+WAIT_TIME_FAILURE_QUEUE_SECONDS = 5
 
 
 class Controller:
@@ -87,21 +87,41 @@ class Controller:
         self.update_cache_metadata(execution_plan=execution_plan, execution_time=execution_time)
 
     def check_status_of_invokations(self, request_ids: dict[str, Step]):
+        from duckingit._config import DuckConfig
+
+        configs = DuckConfig()
+
+        cnt = 0
+
         while len(request_ids) > 0:
-            success_ids = self.provider.poll_messages_from_success_queue()
+            # Logic to speed up fast queries
+            if cnt < len(WAIT_TIME_SUCCESS_QUEUE_SECONDS):
+                wait_time = WAIT_TIME_SUCCESS_QUEUE_SECONDS[cnt]
+            messages = self.provider.poll_messages_from_queue(
+                name=configs.aws_sqs.QueueSuccess, wait_time_seconds=wait_time
+            )
+            if len(messages) > 0:
+                for message in messages:
+                    try:
+                        request_ids.pop(message.request_id)
+                    except KeyError:
+                        continue
 
-            for _id in success_ids:
-                request_ids.pop(_id)
+                entries = list(message.create_entry_payload() for message in messages)
+                self.provider.delete_messages_from_sqs_queue(
+                    name=configs.aws_sqs.QueueSuccess, entries=entries
+                )
 
-            if time.time() % SECONDS_TO_CHECK_FAILED == 0:
-                failure_ids = self.provider.poll_messages_from_failure_queue()
+            if cnt % ITERATIONS_TO_CHECK_FAILED == 0:
+                messages = self.provider.poll_messages_from_queue(
+                    name=configs.aws_sqs.QueueFailure,
+                    wait_time_seconds=WAIT_TIME_FAILURE_QUEUE_SECONDS,
+                )
 
-                if len(failure_ids) > 0:
-                    # failed_items = list(request_ids.get(i) for i in failure_ids)
-                    FailedLambdaFunctions()
+                if len(messages) > 0:
+                    raise FailedLambdaFunctions
 
-            if time.time() % SECONDS_TO_FAIL_OPERATION == 0:
-                raise FailedLambdaFunctions()
+            cnt += 1
 
     # def show(self):
     #     # Select only X parquet files?
