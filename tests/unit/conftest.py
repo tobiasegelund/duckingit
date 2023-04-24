@@ -1,21 +1,31 @@
 import pytest
 
-from duckingit.integrations.aws import AWS
+from duckingit.integrations.aws import AWS, SQSMessage
 from duckingit._session import DuckSession
 from duckingit._controller import Controller
 from duckingit._dataset import Dataset
 from duckingit._config import DuckConfig
-from duckingit._planner import Plan
+from duckingit._planner import Plan, Step
 from duckingit._parser import Query
 from duckingit._utils import create_hash_string
 
 
 class _MockAWS(AWS):
-    def _invoke_lambda_sync(self, request_payload: str) -> dict:
+    def poll_messages_from_queue(self, name: str, wait_time_seconds: int) -> list[SQSMessage]:
+        return [
+            SQSMessage(request_id="123", message_id="ABC", receipt_handle="ABC"),
+            SQSMessage(request_id="345", message_id="ABC", receipt_handle="ABC"),
+            SQSMessage(request_id="678", message_id="ABC", receipt_handle="ABC"),
+        ]
+
+    def delete_messages_from_sqs_queue(self, name: str, entries: list[dict]) -> None:
+        pass
+
+    def invoke(self, execution_steps: list[Step], prefix: str) -> dict[str, Step]:
         return {
-            "data": [(100, "John", "Doe"), (101, "Eric", "Doe"), (102, "Maria", "Doe")],
-            "dtypes": ["BIGINT", "VARCHAR", "VARCHAR"],
-            "columns": ["id", "first_name", "last_name"],
+            "123": Step(subquery="mock", subquery_hashed="hashed"),
+            "345": Step(subquery="mock", subquery_hashed="hashed"),
+            "678": Step(subquery="mock", subquery_hashed="hashed"),
         }
 
 
@@ -72,9 +82,9 @@ def MockPlan(MockQuery):
     yield plan
 
 
-# @pytest.fixture
-# def MockAWS():
-#     yield _MockAWS
+@pytest.fixture
+def MockAWS():
+    yield _MockAWS
 
 
 @pytest.fixture

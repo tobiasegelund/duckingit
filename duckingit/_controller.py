@@ -10,8 +10,8 @@ if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
 
 
-ITERATIONS_TO_CHECK_FAILED = 5
-WAIT_TIME_SUCCESS_QUEUE_SECONDS = [1, 1, 2, 4, 6]
+ITERATIONS_TO_CHECK_FAILED = 10
+WAIT_TIME_SUCCESS_QUEUE_SECONDS = [2, 2, 4, 6]
 WAIT_TIME_FAILURE_QUEUE_SECONDS = 5
 
 
@@ -112,6 +112,8 @@ class Controller:
                     name=configs.aws_sqs.QueueSuccess, entries=entries
                 )
 
+            cnt += 1
+
             if cnt % ITERATIONS_TO_CHECK_FAILED == 0:
                 messages = self.provider.poll_messages_from_queue(
                     name=configs.aws_sqs.QueueFailure,
@@ -119,9 +121,7 @@ class Controller:
                 )
 
                 if len(messages) > 0:
-                    raise FailedLambdaFunctions
-
-            cnt += 1
+                    raise FailedLambdaFunctions(f"{messages} failed")
 
     # def show(self):
     #     # Select only X parquet files?
