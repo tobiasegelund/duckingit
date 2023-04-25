@@ -153,11 +153,7 @@ class Stage:
             operations += cls.select(node.group)
             operations += cls.aggregations(node.aggregations)
 
-            from_ = node.source
-            if from_ is None:
-                raise ValueError("FROM is None")
-            else:
-                operations += cls.from_(from_)
+            # TODO: Apply context to from
 
             condition = node.condition
             if condition:
