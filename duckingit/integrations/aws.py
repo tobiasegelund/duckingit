@@ -51,9 +51,9 @@ class AWS:
         )
         self._validate_response(response=resp)
 
-        return self._unwrap_response(response=resp, field="RequestId")
+        return self._collect_field_from_response(response=resp, field="RequestId")
 
-    def _unwrap_response(self, response: dict[str, dict], field: str):
+    def _collect_field_from_response(self, response: dict[str, dict], field: str):
         unwrap = response.get("ResponseMetadata", None)
         if unwrap is None:
             raise ValueError(
@@ -68,7 +68,7 @@ class AWS:
 
     def _validate_response(self, response: dict) -> None:
         try:
-            if self._unwrap_response(response=response, field="HTTPStatusCode") not in [
+            if self._collect_field_from_response(response=response, field="HTTPStatusCode") not in [
                 200,
                 202,
             ]:
@@ -105,10 +105,6 @@ class AWS:
         from duckingit._config import DuckConfig
 
         configs = DuckConfig()
-
-        # Exponentional polling time, to capture fast requests.
-        # If only long polling, fast queries will end up running way longer.
-        # [0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] and then stay at 10?
 
         receive_request = {
             "QueueUrl": name,
