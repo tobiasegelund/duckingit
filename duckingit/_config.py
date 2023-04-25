@@ -153,8 +153,9 @@ class SQSConfig(ServiceConfig):
 @dataclass
 class SessionConfig(ServiceConfig):
     cache_expiration_time: int = 15
-    max_invokations: int = 15
+    max_invokations: int | None = None
     provider: Providers = Providers.AWS
+    verbose: bool = False
 
     def __repr__(self) -> str:
         repr = cast_mapping_to_string_with_newlines(service_name="session", mapping=self.__dict__)
@@ -166,7 +167,7 @@ class SessionConfig(ServiceConfig):
                 raise ValueError("`cache expiration time` must be an integer")
 
         elif name == "max_invokations":
-            if not isinstance(value, int):
+            if not (isinstance(value, int) or (value is None)):
                 raise ValueError("`max invokations` must be an integer")
 
         elif name == "provider":
@@ -175,6 +176,10 @@ class SessionConfig(ServiceConfig):
 
             if isinstance(value, str):
                 value = Providers(value.lower())
+
+        elif name == "verbose":
+            if not (isinstance(value, bool)):
+                raise ValueError("`verbose` must be boolean")
 
         else:
             raise AttributeError()

@@ -2,6 +2,8 @@ import typing as t
 import copy
 from dataclasses import dataclass
 
+from sqlglot import planner
+
 from duckingit._exceptions import WrongInvokationType
 from duckingit._parser import Query
 from duckingit._utils import split_list_in_chunks, create_hash_string
@@ -97,7 +99,18 @@ class Plan:
 
 
 class Stage:
-    pass
+    dependencies: t.Iterable[str]
+    dependents: t.Iterable[str]
+
+    @classmethod
+    def create(cls, node: planner.Plan):
+        pass
+
+    def add_dependency(self) -> None:
+        pass
+
+    def add_dependents(self) -> None:
+        pass
 
 
 @dataclass
@@ -105,16 +118,11 @@ class Operation:
     dependencies: t.Iterable[str]
     dependents: t.Iterable[str]
 
-    @classmethod
-    def create(cls):
-        pass
-
-    def add_dependency(self) -> None:
-        pass
-
 
 class Scan(Operation):
-    pass
+    @classmethod
+    def create(cls, node: planner.Scan):
+        pass
 
 
 class Sort(Operation):
