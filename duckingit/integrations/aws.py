@@ -93,7 +93,7 @@ class AWS:
             receipt_handle=message.get("ReceiptHandle"),
         )
 
-    def delete_messages_from_sqs_queue(self, name: str, entries: list[dict[str, str]]) -> None:
+    def delete_messages_from_queue(self, name: str, entries: list[dict[str, str]]) -> None:
         delete_request = {
             "QueueUrl": name,
             "Entries": entries,

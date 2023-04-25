@@ -106,7 +106,7 @@ class Controller:
                         continue
 
                 entries = list(message.create_entry_payload() for message in messages)
-                self.provider.delete_messages_from_sqs_queue(name=success_queue, entries=entries)
+                self.provider.delete_messages_from_queue(name=success_queue, entries=entries)
 
             cnt += 1
 

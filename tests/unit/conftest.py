@@ -18,7 +18,7 @@ class _MockAWS(AWS):
             SQSMessage(request_id="678", message_id="ABC", receipt_handle="ABC"),
         ]
 
-    def delete_messages_from_sqs_queue(self, name: str, entries: list[dict]) -> None:
+    def delete_messages_from_queue(self, name: str, entries: list[dict]) -> None:
         pass
 
     def invoke(self, execution_steps: list[Step], prefix: str) -> dict[str, Step]:
