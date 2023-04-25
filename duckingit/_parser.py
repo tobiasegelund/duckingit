@@ -108,4 +108,4 @@ found."
         try:
             return sqlglot.transpile(query, read="duckdb")[0]
         except Exception as e:
-            raise ParserError(e)
+            raise ParserError(e) from e
