@@ -16,7 +16,7 @@ from duckingit._utils import create_hash_string, scan_source_for_prefixes
 class Query:
     sql: str
     hashed: str
-    expression: expr.Expression
+    ast: expr.Expression
 
     _list_of_prefixes: list[str] | None = None
 
@@ -30,7 +30,7 @@ class Query:
         return cls(
             sql=query,
             hashed=create_hash_string(query),
-            expression=expression,
+            ast=expression,
         )
 
     @property
@@ -41,24 +41,24 @@ class Query:
 
     @property
     def scans(self) -> t.Generator:
-        yield from self.expression.find_all(expr.Select)
+        yield from self.ast.find_all(expr.Select)
 
     @property
     def aggregates(self) -> t.Generator:
-        yield from self.expression.find_all(expr.AggFunc)
+        yield from self.ast.find_all(expr.AggFunc)
 
     @property
     def sorts(self) -> t.Generator:
-        yield from self.expression.find_all(expr.Order)
+        yield from self.ast.find_all(expr.Order)
 
     @property
     def joins(self) -> t.Generator:
-        yield from self.expression.find_all(expr.Join)
+        yield from self.ast.find_all(expr.Join)
 
     @property
     def tables(self) -> t.Generator:
         """Returns a generator that yields over table names, e.g. READ_PARQUET(VALUES(XX))"""
-        yield from self.expression.find_all(expr.Table)
+        yield from self.ast.find_all(expr.Table)
 
     @property
     def bucket(self) -> str:

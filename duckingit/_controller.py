@@ -1,7 +1,7 @@
 import datetime
 import typing as t
 
-from duckingit._planner import Plan, Step
+from duckingit._planner import Plan, Task
 from duckingit.integrations import Providers
 from duckingit._utils import scan_source_for_files
 from duckingit._exceptions import FailedLambdaFunctions
@@ -30,7 +30,9 @@ class Controller:
         self.session = session
 
         self._set_provider()
-        self.cache_expiration_time = getattr(session.conf, "session.cache_expiration_time")
+        self.cache_expiration_time = getattr(
+            session.conf, "session.cache_expiration_time"
+        )
 
     def _set_provider(self):
         self.provider = Providers.AWS.klass
@@ -83,9 +85,11 @@ class Controller:
 
             self.check_status_of_invokations(request_ids=request_ids)
 
-        self.update_cache_metadata(execution_plan=execution_plan, execution_time=execution_time)
+        self.update_cache_metadata(
+            execution_plan=execution_plan, execution_time=execution_time
+        )
 
-    def check_status_of_invokations(self, request_ids: dict[str, Step]):
+    def check_status_of_invokations(self, request_ids: dict[str, Task]):
         success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
         failure_queue = getattr(self.session.conf, "aws_sqs.QueueFailure")
 
@@ -106,7 +110,9 @@ class Controller:
                         continue
 
                 entries = list(message.create_entry_payload() for message in messages)
-                self.provider.delete_messages_from_queue(name=success_queue, entries=entries)
+                self.provider.delete_messages_from_queue(
+                    name=success_queue, entries=entries
+                )
 
             cnt += 1
 

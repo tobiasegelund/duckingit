@@ -19,6 +19,13 @@ class Providers(Enum):
         except KeyError:
             raise NotImplementedError("Currently, it's only implemented for AWS Lambda")
 
+    @classmethod
+    def get_or_raise(cls, name: str):
+        try:
+            return cls(name.lower())
+        except ValueError as e:
+            raise ValueError(f"Unknown provider `{name}`") from e
+
     @property
     def fs(self) -> str:
         _fs = {self.AWS: "s3", self.GCP: "gcp"}
