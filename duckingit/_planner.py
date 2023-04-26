@@ -4,7 +4,7 @@ import copy
 from dataclasses import dataclass
 
 import sqlglot
-import sqlglot.expressions as expr
+import sqlglot.expressions as exp
 from sqlglot import planner
 
 from duckingit._exceptions import WrongInvokationType
@@ -65,188 +65,90 @@ class Task:
 
 
 class Stage:
-    def __init__(
-        self,
-        stage_type: Stages,
-        stage_query: str,
-        dependencies: list[str] | None = None,
-    ):
-        self.stage_type = stage_type
-        self.stage_query = stage_query
-
-        self.dependencies = dependencies
-
-        # Create execution tasks here
-        # self.execution_tasks: list[Task] = execution_tasks
-
-    def __repr__(self):
-        return f"{self.stage_type.value}<{self.stage_query}>"
+    dependents = set()
+    dependencies = set()
 
     @classmethod
-    def from_step(cls, node: planner.Step, context: list[str] | None = None):
-        if isinstance(node, planner.Scan):
-            stage_type, operations = cls.scan(node=node, context=context)
-        elif isinstance(node, planner.Aggregate):
-            stage_type, operations = cls.aggregate(node=node, context=context)
-        elif isinstance(node, planner.Join):
-            stage_type, operations = cls.join(node=node, context=context)
-        elif isinstance(node, planner.SetOperation):
-            stage_type, operations = cls.set_operation(node=node, context=context)
-        elif isinstance(node, planner.Sort):
-            stage_type, operations = cls.sort(node=node, context=context)
-        else:
-            raise NotImplementedError()
+    def from_ast(cls, ast: exp.Expression, context: dict = {}):
+        ast = ast.copy()
 
-        query = " ".join(operations)
+        with_ = ast.args.get("with")
+        for cte in with_:
+            pass
 
-        return cls(stage_type=stage_type, stage_query=query)
+        from_ = ast.args.get("from")
+        if isinstance(ast, exp.Select):
+            from_ = from_.expressions[0]
 
-    @classmethod
-    def scan(
-        cls, node: planner.Scan, context: list[str] | None = None
-    ) -> tuple[Stages, list[str]]:
-        operations = []
+            if isinstance(from_, exp.Subquery):
+                name = from_.alias_or_name
+                stage = Stage.from_ast(from_.this)
 
-        projections = node.projections
-        if projections:
-            operations += cls.select(projections)
-        else:
-            operations.append("SELECT")
-            for dep in node.dependents:
-                if isinstance(dep, planner.Aggregate):
-                    operations.append(
-                        ", ".join(
-                            list(col.name for col in dep.group.values())
-                            + list(
-                                col.find(expr.Column).name for col in dep.aggregations
-                            )
-                        )
-                    )
-                else:
-                    # TODO: Discover which other options apply
-                    raise ValueError("Planner.Aggregate doesn't only apply anymore")
+            stage = Scan.from_ast(ast)
 
-        from_ = node.source
-        # TODO consider to use from_ = "" to apply dependency => Apply context
-        if from_ is None:
-            raise ValueError("FROM is None")
-        else:
-            operations += cls.from_(from_)
+        # group = ast.args.get("group")
 
-        condition = node.condition
-        if condition:
-            operations += cls.where(condition)
+        # if group:
+        #     stage = Aggregate.from_ast(ast)
 
-        limit = node.limit
-        if isinstance(limit, int):
-            operations += cls.limit(limit)
+        # order = ast.args.get("order")
 
-        return Stages.SCAN, operations
+        # if order:
+        #     stage = Sort.from_ast(ast)
 
-    @classmethod
-    def aggregate(
-        cls, node: planner.Aggregate, context: list[str] | None = None
-    ) -> tuple[Stages, list[str]]:
-        operations = []
+    def __init__(self, name: str = "", query: str = ""):
+        # Name of the table
+        self.name = name
+        # The query to run in the stage
+        self.query = query
 
-        if node.group:
-            operations += cls.select(node.group)
-            operations += cls.aggregations(node.aggregations)
-
-            # TODO: Apply context to from
-
-            condition = node.condition
-            if condition:
-                operations += cls.where(condition)
-
-            operations += cls.group_by(node.group)
-
-            limit = node.limit
-            if isinstance(limit, int):
-                operations += cls.limit(limit)
-
-        else:
-            raise ValueError("Missing GROUP BY statement in query")
-
-        return Stages.AGGREGATE, operations
-
-    @classmethod
-    def sort(
-        cls, node: planner.Sort, context: list[str] | None = None
-    ) -> tuple[Stages, list[str]]:
-        operations = []
-
-        projections = node.projections
-        if projections:
-            operations += cls.select(node.projections)
-
-            # TODO: Apply context!!
-            # from_ = node.source
-
-            key = node.key
-            if key:
-                operations += cls.order_by(key)
-
-        return Stages.SORT, operations
-
-    @classmethod
-    def set_operation(
-        cls, node: planner.SetOperation, context: list[str] | None = None
-    ) -> tuple[Stages, list[str]]:
-        raise NotImplementedError()
-
-    @classmethod
-    def join(
-        cls, node: planner.Join, context: list[str] | None = None
-    ) -> tuple[Stages, list[str]]:
-        raise NotImplementedError()
-
-    @classmethod
-    def select(
-        cls, exp: t.Sequence[expr.Expression] | dict[str, expr.Expression]
-    ) -> list[str]:
-        stmt = ["SELECT"]
-        if isinstance(exp, list):
-            try:
-                stmt.append(", ".join(list(col.find(expr.Column).name for col in exp)))
-            except AttributeError:
-                stmt.append(", ".join(list(col.sql() for col in exp)))
-        if isinstance(exp, dict):
-            stmt.append(" ".join(col.sql() + "," for col in exp.values()))
-        return stmt
-
-    @classmethod
-    def group_by(cls, exp: dict[str, expr.Expression]) -> list[str]:
-        return ["GROUP BY", ", ".join(col.sql() for col in exp.values())]
-
-    @classmethod
-    def from_(cls, exp: expr.Expression | str) -> list[str]:
-        stmt = ["FROM"]
-        if isinstance(exp, str):
-            stmt.append(exp)
-        else:
-            stmt.append(exp.sql())
-        return stmt
-
-    @classmethod
-    def where(cls, exp: expr.Expression) -> list[str]:
-        return ["WHERE", exp.sql()]
-
-    @classmethod
-    def limit(cls, exp: int) -> list[str]:
-        return ["LIMIT", str(exp)]
-
-    @classmethod
-    def aggregations(cls, exp: t.Sequence[expr.Expression]) -> list[str]:
-        return [", ".join(col.sql() for col in exp)]
-
-    @classmethod
-    def order_by(cls, exp: list[expr.Expression]) -> list[str]:
-        return ["ORDER BY", ", ".join(col.find(expr.Column).name for col in exp)]
+    def add_depedency(self, dependency: Stage):
+        self.dependencies.add(dependency)
+        dependency.dependents.add(self)
 
     def copy(self):
         """Returns a deep copy of the object itself"""
         return copy.deepcopy(self)
+
+
+class Scan(Stage):
+    stage_type = Stages.SCAN
+
+    @classmethod
+    def from_ast(cls, ast: exp.Expression):
+        pass
+
+
+class Aggregate(Stage):
+    stage_type = Stages.AGGREGATE
+
+    @classmethod
+    def from_ast(cls, ast: exp.Expression):
+        pass
+
+
+class Sort(Stage):
+    stage_type = Stages.SORT
+
+    @classmethod
+    def from_ast(cls, ast: exp.Expression):
+        pass
+
+
+class Join(Stage):
+    stage_type = Stages.JOIN
+
+    @classmethod
+    def from_ast(cls, ast: exp.Expression):
+        pass
+
+
+class SetOperation(Stage):
+    stage_type = Stages.SET
+
+    @classmethod
+    def from_ast(cls, ast: exp.Expression):
+        pass
 
 
 class Plan:
@@ -275,26 +177,31 @@ class Plan:
 
     @classmethod
     def from_query(cls, query: Query):
-        plan = planner.Plan(query.ast)
+        root = query.ast.copy()
+        try:
+            root.find(exp.With).pop()
+        except AttributeError():
+            pass
 
-        stages = list()
-        completed = set()
-        queue = set(plan.leaves)
+        ast = query.ast.copy()
+        # Table name => hash values to locate
+        context: dict[str, Stage] = {}
 
-        while queue:
-            node = queue.pop()
+        def replace_from(
+            expr: exp.Expression, table_name: str, alias: str = ""
+        ) -> None:
+            stmt = exp.From(
+                expressions=[
+                    exp.Table(
+                        this=exp.Identifier(this=table_name, quoted=False),
+                        alias=exp.TableAlias(
+                            this=exp.Identifier(this=alias, quoted=False)
+                        ),
+                    )
+                ]
+            )
 
-            stage = Stage.from_step(node)
-
-            completed.add(node)
-            stages.append(stage)
-
-            for deb in node.dependents:
-                if deb not in completed:
-                    queue.add(deb)
-
-        # root = plan.root
-        return cls(query=query, stages=stages)
+            expr.find(exp.From).replace(stmt)
 
     # @classmethod
     # def create_from_query(cls, query: Query, invokations: int | str):
