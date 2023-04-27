@@ -16,7 +16,7 @@ class Stages(Enum):
     AGGREGATE = "AGGREGATE"
     JOIN = "JOIN"
     SCAN = "SCAN"
-    SET = "SET"
+    UNION = "UNION"
     SORT = "SORT"
 
 
@@ -65,46 +65,82 @@ class Task:
 
 
 class Stage:
-    dependents = set()
-    dependencies = set()
-
     @classmethod
-    def from_ast(cls, ast: exp.Expression, context: dict = {}):
+    def from_ast(
+        cls,
+        ast: exp.Expression,
+        previous_stage: Stage | None = None,
+        root_stage: Stage | None = None,
+    ):
         ast = ast.copy()
-
-        with_ = ast.args.get("with")
-        for cte in with_:
-            pass
-
         from_ = ast.args.get("from")
         if isinstance(ast, exp.Select):
-            from_ = from_.expressions[0]
+            if len(from_.expressions) > 1:
+                raise NotImplementedError("Multi FROM is not implemented yet")
+            expression = from_.expressions[0]
 
-            if isinstance(from_, exp.Subquery):
-                name = from_.alias_or_name
-                stage = Stage.from_ast(from_.this)
+            if isinstance(expression, exp.Subquery):
+                stage = cls.select_stage_type(ast)
+                stage.name = expression.sql()
+                stage.sql = ast.sql()
+                stage.ast = ast
+                if previous_stage is not None:
+                    previous_stage.add_dependency(stage)
+                if root_stage is None:
+                    root_stage = stage
+                stage = Stage.from_ast(
+                    expression.this, previous_stage=stage, root_stage=root_stage
+                )
 
-            stage = Scan.from_ast(ast)
+            elif isinstance(expression, exp.Union):
+                raise NotImplementedError("Cannot handle Unions yet")
 
-        # group = ast.args.get("group")
+            else:
+                stage = cls.select_stage_type(ast)
+                stage.name = expression.sql()
+                stage.sql = ast.sql()
+                stage.ast = ast
+                if previous_stage is not None:
+                    previous_stage.add_dependency(stage)
 
-        # if group:
-        #     stage = Aggregate.from_ast(ast)
+                if root_stage is None:
+                    root_stage = stage
+        else:
+            raise NotImplementedError()
 
-        # order = ast.args.get("order")
+        if root_stage is None:
+            root_stage = stage
+        return root_stage
 
-        # if order:
-        #     stage = Sort.from_ast(ast)
+    @classmethod
+    def select_stage_type(cls, ast: exp.Expression):
+        group = ast.args.get("group")
+        if group:
+            return Aggregate()
 
-    def __init__(self, name: str = "", query: str = ""):
-        # Name of the table
-        self.name = name
-        # The query to run in the stage
-        self.query = query
+        sort = ast.args.get("order")
+        if sort:
+            return Sort()
 
-    def add_depedency(self, dependency: Stage):
-        self.dependencies.add(dependency)
-        dependency.dependents.add(self)
+        join = ast.args.get("join")
+        if join:
+            raise NotImplementedError("Joins are not implemented yet")
+
+        return Scan()
+
+    def __init__(self):
+        self.name: str = ""
+        self.sql: str = ""
+        self.ast: exp.Expression | None = None
+        self.dependents = []
+        self.dependencies = []
+
+    def __repr__(self) -> str:
+        return f"{self.name}: {self.sql}"
+
+    def add_dependency(self, dependency: "Stage"):
+        self.dependencies.append(dependency)
+        dependency.dependents.append(self)
 
     def copy(self):
         """Returns a deep copy of the object itself"""
@@ -114,41 +150,36 @@ class Stage:
 class Scan(Stage):
     stage_type = Stages.SCAN
 
-    @classmethod
-    def from_ast(cls, ast: exp.Expression):
-        pass
+    def __init__(self):
+        super().__init__()
 
 
 class Aggregate(Stage):
     stage_type = Stages.AGGREGATE
 
-    @classmethod
-    def from_ast(cls, ast: exp.Expression):
-        pass
+    def __init__(self):
+        super().__init__()
 
 
 class Sort(Stage):
     stage_type = Stages.SORT
 
-    @classmethod
-    def from_ast(cls, ast: exp.Expression):
-        pass
+    def __init__(self):
+        super().__init__()
 
 
 class Join(Stage):
     stage_type = Stages.JOIN
 
-    @classmethod
-    def from_ast(cls, ast: exp.Expression):
-        pass
+    def __init__(self):
+        super().__init__()
 
 
-class SetOperation(Stage):
-    stage_type = Stages.SET
+class Union(Stage):
+    stage_type = Stages.UNION
 
-    @classmethod
-    def from_ast(cls, ast: exp.Expression):
-        pass
+    def __init__(self):
+        super().__init__()
 
 
 class Plan:
@@ -184,8 +215,6 @@ class Plan:
             pass
 
         ast = query.ast.copy()
-        # Table name => hash values to locate
-        context: dict[str, Stage] = {}
 
         def replace_from(
             expr: exp.Expression, table_name: str, alias: str = ""
