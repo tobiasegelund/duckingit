@@ -73,6 +73,25 @@ class Stage:
         root_stage: Stage | None = None,
     ):
         ast = ast.copy()
+        cte_stages = {}
+
+        with_ = ast.args.get("with")
+        try:
+            ast.find(exp.With).pop()
+        except AttributeError:
+            pass
+
+        if with_:
+            for cte in with_.expressions:
+                stage = cls.select_stage_type(cte)
+                stage.name = cte.alias
+                stage.sql = cte.sql()
+                stage.ast = ast
+                cte_stages[cte.alias] = stage
+                stage = Stage.from_ast(
+                    cte.this, previous_stage=stage, root_stage=root_stage
+                )
+
         from_ = ast.args.get("from")
         if isinstance(ast, exp.Select):
             if len(from_.expressions) > 1:
@@ -108,9 +127,24 @@ class Stage:
         else:
             raise NotImplementedError()
 
-        if root_stage is None:
-            root_stage = stage
-        return root_stage
+        for _, stage in cte_stages.items():
+            root_stage.add_dependency(stage)
+
+        @classmethod
+        def select_stage_type(cls, ast: exp.Expression):
+            group = ast.args.get("group")
+            if group:
+                return Aggregate()
+
+            sort = ast.args.get("order")
+            if sort:
+                return Sort()
+
+            join = ast.args.get("join")
+            if join:
+                raise NotImplementedError("Joins are not implemented yet")
+
+            return Scan()
 
     @classmethod
     def select_stage_type(cls, ast: exp.Expression):
