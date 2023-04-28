@@ -40,22 +40,6 @@ class Query:
         return self._list_of_prefixes
 
     @property
-    def scans(self) -> t.Generator:
-        yield from self.ast.find_all(expr.Select)
-
-    @property
-    def aggregates(self) -> t.Generator:
-        yield from self.ast.find_all(expr.AggFunc)
-
-    @property
-    def sorts(self) -> t.Generator:
-        yield from self.ast.find_all(expr.Order)
-
-    @property
-    def joins(self) -> t.Generator:
-        yield from self.ast.find_all(expr.Join)
-
-    @property
     def tables(self) -> t.Generator:
         """Returns a generator that yields over table names, e.g. READ_PARQUET(VALUES(XX))"""
         yield from self.ast.find_all(expr.Table)
