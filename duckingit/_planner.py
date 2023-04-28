@@ -1,3 +1,4 @@
+import re
 import typing as t
 from enum import Enum
 import copy
@@ -7,13 +8,13 @@ import sqlglot
 import sqlglot.expressions as exp
 from sqlglot import planner
 
-from duckingit._exceptions import WrongInvokationType
 from duckingit._parser import Query
-from duckingit._utils import split_list_in_chunks, create_hash_string
+from duckingit._utils import split_list_in_chunks, create_hash_string, flatten_list
 
 
 class Stages(Enum):
     AGGREGATE = "AGGREGATE"
+    CTE = "CTE"
     JOIN = "JOIN"
     SCAN = "SCAN"
     UNION = "UNION"
@@ -30,7 +31,7 @@ class Task:
 
     @classmethod
     def create(cls, query: Query, prefixes: list[str]):
-        """Creates a step to execute on a serverless function
+        """Creates a task to execute on a serverless function
 
         Args:
             query, Query: A query parsed by the Query class
@@ -41,21 +42,17 @@ class Task:
 
         """
         # TODO: Update to use Extension Enum
+        # TODO: How to handle alias?
         subquery = query.copy().sql
         for table in query.tables:
             table = str(table).replace("ARRAY", "LIST_VALUE")  # Current sqlglot bug
 
-            if (
-                table[: len("READ_PARQUET")] == "READ_PARQUET"
-                or table[: len("SCAN_PARQUET")] == "SCAN_PARQUET"
-            ):
+            if table[: len("READ_JSON_AUTO")] == "READ_JSON_AUTO":
+                subquery = subquery.replace(table, f"READ_JSON_AUTO({prefixes})")
+            elif table[: len("READ_CSV_AUTO")] == "READ_CSV_AUTO":
+                subquery = subquery.replace(table, f"READ_CSV_AUTO({prefixes})")
+            else:
                 subquery = subquery.replace(table, f"READ_PARQUET({prefixes})")
-
-            for extension in ["JSON", "CSV"]:
-                if table[: len(f"READ_{extension}_AUTO")] == f"READ_{extension}_AUTO":
-                    subquery = subquery.replace(
-                        table, f"READ_{extension}_AUTO({prefixes})"
-                    )
 
         return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
 
@@ -92,9 +89,9 @@ class Stage:
                 stage = cls.select_stage_type(cte)
                 stage.id = create_hash_string(cte.sql(), digits=6)
                 stage.name = cte.alias
+                stage.alias = cte.alias
                 stage.from_ = cte.this.sql()
                 stage.sql = cte.sql()
-                stage.ast = cte
 
                 stage = Stage.from_ast(
                     cte.this,
@@ -115,8 +112,8 @@ class Stage:
                 stage = cls.select_stage_type(ast)
                 stage.id = create_hash_string(ast.sql(), digits=6)
                 stage.from_ = expression.sql()
+                stage.alias = expression.alias
                 stage.sql = ast.sql()
-                stage.ast = ast
 
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
@@ -133,16 +130,18 @@ class Stage:
                 raise NotImplementedError("Cannot handle Unions yet")
 
             else:
-                table_name = expression.sql()  # expression.this.sql()
+                table_name = expression.sql()
 
                 stage = cls.select_stage_type(ast)
                 stage.id = create_hash_string(ast.sql(), digits=6)
+                stage.alias = expression.alias
                 stage.from_ = table_name
                 stage.sql = ast.sql()
-                stage.ast = ast
 
                 if table_name in cte_stages:
-                    stage.add_dependency(cte_stages[table_name])
+                    cte = cte_stages[table_name]
+                    stage.add_dependency(cte)
+                    # stage.from_ = cte.sql
 
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
@@ -172,6 +171,9 @@ class Stage:
 
     @classmethod
     def select_stage_type(cls, ast: exp.Expression):
+        if isinstance(ast, exp.CTE):
+            return CTE()
+
         group = ast.args.get("group")
         if group:
             return Aggregate()
@@ -189,43 +191,64 @@ class Stage:
     def __init__(self):
         self.id = str = ""
         self.name: str = ""
-        self.from_: str = ""
+        self.alias: str = ""  # Properbly to be deleted
         self.sql: str = ""
-        self.ast: exp.Expression | None = None
+        self.from_: str = ""
+
         self.dependents = []
         self.dependencies = []
 
+        self.tasks: list[Task] = []
+
     def __repr__(self) -> str:
-        return (
-            f"{self.stage_type} - {self.id}:\n{self.sql}\n\nDEPENDENCY:\n{self.from_}"
+        return f"{self.stage_type} - {self.id}: {self.sql}"
+
+    @property
+    def name_or_sql(self) -> None:
+        if self.name == "":
+            return self.sql
+        return self.name
+
+    @property
+    def output(self) -> list[str]:
+        return list(task.subquery_hashed for task in self.tasks)
+
+    def create_tasks(self, dependency: dict[str : list[str]] | None = None) -> None:
+        # Dependency will change to multiple dependencies in the future
+        from duckingit._config import DuckConfig, CACHE_PREFIX
+
+        query = Query.parse(self.sql)
+        if dependency is None:
+            prefixes = query.list_of_prefixes
+        else:
+            prefixes = list(v for _, v in dependency.items())
+
+        # Wide operations can only have 1 invokation
+        # Narrow operations like SCAN can have multiple invokations
+        invokations = (
+            DuckConfig().session.max_invokations
+            if self.stage_type == Stages.SCAN
+            else 1
         )
+
+        if isinstance(invokations, str):
+            invokations = len(prefixes)
+
+        # TODO: Heuristic to divide the workload between the invokations based on size
+        # of prefixes / number of files etc. Or based on some deeper analysis of the query?
+        chunks_of_prefixes = split_list_in_chunks(
+            prefixes, number_of_invokations=invokations
+        )
+
+        _tasks: list[Task] = []
+        for chunk in chunks_of_prefixes:
+            _tasks.append(Task.create(query=query, prefixes=chunk))
+
+        self.tasks = _tasks
 
     def add_dependency(self, dependency: "Stage"):
         self.dependencies.append(dependency)
         dependency.dependents.append(self)
-
-    def find_stage(self, name: str):
-        """
-        Find a stage in the DAG with the given name.
-
-        Args:
-            name: Name of the stage to find.
-
-        Returns:
-            The stage with the given name, or None if no such stage exists in the DAG.
-        """
-        queue = self.dependencies[:]
-
-        while queue:
-            current_stage = queue.pop(0)
-
-            if current_stage.name == name:
-                return current_stage
-
-            for dependency in current_stage.dependencies:
-                queue.append(dependency)
-
-        return None
 
     def copy(self):
         """Returns a deep copy of the object itself"""
@@ -234,6 +257,13 @@ class Stage:
 
 class Scan(Stage):
     stage_type = Stages.SCAN
+
+    def __init__(self):
+        super().__init__()
+
+
+class CTE(Stage):
+    stage_type = Stages.CTE
 
     def __init__(self):
         super().__init__()
@@ -284,59 +314,52 @@ class Plan:
             nodes
     """
 
-    def __init__(self, query: Query, stages: list[Stage]) -> None:
+    def __init__(
+        self, query: Query, root: Stage, dag: dict[Stage, t.Set[Stage]]
+    ) -> None:
         self.query = query
-        self.stages = stages
+        self.root = root
+        self.dag = dag
+
+        # self.stages = stages
 
     def __len__(self) -> int:
         return len(self.stages)
 
+    def leaves(self) -> list[Stage]:
+        return [node for node, deps in self.dag.items() if not deps]
+
     @classmethod
     def from_query(cls, query: Query):
-        root = query.ast.copy()
-        try:
-            root.find(exp.With).pop()
-        except AttributeError():
-            pass
+        root = Stage.from_ast(ast=query.ast)
+        bucket = query.bucket
+        context: dict[str, list[str]] = {}
 
-        ast = query.ast.copy()
+        # TODO:
+        # Replace FROM statements and secure alias
+        # Focus on Stage ID
+        # Create tasks within stages
 
-        def replace_from(
-            expr: exp.Expression, table_name: str, alias: str = ""
-        ) -> None:
-            stmt = exp.From(
-                expressions=[
-                    exp.Table(
-                        this=exp.Identifier(this=table_name, quoted=False),
-                        alias=exp.TableAlias(
-                            this=exp.Identifier(this=alias, quoted=False)
-                        ),
-                    )
-                ]
-            )
+        dag = {}
+        nodes = {root}
+        while nodes:
+            node = nodes.pop()
 
-            expr.find(exp.From).replace(stmt)
+            dag[node] = set()
+            for dep in node.dependencies:
+                dag[node].add(dep)
+                nodes.add(dep)
 
-    # @classmethod
-    # def create_from_query(cls, query: Query, invokations: int | str):
-    #     if isinstance(invokations, str):
-    #         if invokations != "auto":
-    #             raise WrongInvokationType(
-    #                 "`invokations` can only be 'auto' or an integer"
-    #             )
-    #         invokations = len(query.list_of_prefixes)
+        queue = set(node for node, deps in dag.items() if not deps)
+        while queue:
+            node = queue.pop()
 
-    #     # TODO: Heuristic to divide the workload between the invokations based on size
-    #     # of prefixes / number of files etc. Or based on some deeper analysis of the query?
-    #     chunks_of_prefixes = split_list_in_chunks(
-    #         query.list_of_prefixes, number_of_invokations=invokations
-    #     )
+            for deb in node.dependents:
+                if deb.stage_type == Stages.CTE:
+                    continue
+                queue.add(deb)
 
-    #     execution_steps: list[Task] = []
-    #     for chunk in chunks_of_prefixes:
-    #         execution_steps.append(Task.create(query=query, prefixes=chunk))
-
-    #     return cls(query=query, execution_steps=execution_steps)
+        return cls(query=query, root=root, dag=dag)
 
     def __repr__(self) -> str:
         return f"{self.stages}"

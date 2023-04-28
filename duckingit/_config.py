@@ -11,6 +11,9 @@ from duckingit._exceptions import ConfigurationError, WrongInvokationType
 from duckingit._utils import cast_mapping_to_string_with_newlines
 
 
+CACHE_PREFIX = ".cache/duckingit"
+
+
 class ServiceConfig:
     def update(self) -> None:
         """Update the state of the ConfigSingleton"""
