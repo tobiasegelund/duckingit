@@ -89,17 +89,9 @@ class DuckSession:
         """
 
         # First try DuckDB to see if it can used from there? Will this be confusing?
-        number_of_invokations = "auto"
-        if getattr(self.conf, "session.max_invokations") is not None:
-            number_of_invokations = self.conf.session.max_invokations
-
-        if number_of_invokations is None:
-            raise ValueError("Number of invokations cannot be None")
 
         parsed_query = Query.parse(query)
-        execution_plan = Plan.create_from_query(
-            query=parsed_query, invokations=number_of_invokations
-        )
+        execution_plan = Plan.from_query(query=parsed_query)
 
         return Dataset(
             execution_plan=execution_plan,
