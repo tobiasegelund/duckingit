@@ -19,6 +19,9 @@ class Stages(Enum):
     UNION = "UNION"
     SORT = "SORT"
 
+    def __str__(self) -> str:
+        return f"{self.value}"
+
 
 @dataclass
 class Task:
@@ -65,15 +68,17 @@ class Task:
 
 
 class Stage:
+    stage_type = ""
+
     @classmethod
     def from_ast(
         cls,
         ast: exp.Expression,
-        previous_stage: Stage | None = None,
-        root_stage: Stage | None = None,
+        previous_stage: None = None,
+        root_stage: None = None,
+        cte_stages: dict = {},
     ):
         ast = ast.copy()
-        cte_stages = {}
 
         with_ = ast.args.get("with")
         try:
@@ -82,15 +87,23 @@ class Stage:
             pass
 
         if with_:
+            cte_stages = cte_stages.copy()
             for cte in with_.expressions:
                 stage = cls.select_stage_type(cte)
+                stage.id = create_hash_string(cte.sql(), digits=6)
                 stage.name = cte.alias
+                stage.from_ = cte.this.sql()
                 stage.sql = cte.sql()
-                stage.ast = ast
-                cte_stages[cte.alias] = stage
+                stage.ast = cte
+
                 stage = Stage.from_ast(
-                    cte.this, previous_stage=stage, root_stage=root_stage
+                    cte.this,
+                    previous_stage=stage,
+                    root_stage=root_stage,
+                    cte_stages=cte_stages,
                 )
+
+                cte_stages[cte.alias] = stage
 
         from_ = ast.args.get("from")
         if isinstance(ast, exp.Select):
@@ -100,25 +113,37 @@ class Stage:
 
             if isinstance(expression, exp.Subquery):
                 stage = cls.select_stage_type(ast)
-                stage.name = expression.sql()
+                stage.id = create_hash_string(ast.sql(), digits=6)
+                stage.from_ = expression.sql()
                 stage.sql = ast.sql()
                 stage.ast = ast
+
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
                 if root_stage is None:
                     root_stage = stage
                 stage = Stage.from_ast(
-                    expression.this, previous_stage=stage, root_stage=root_stage
+                    expression.this,
+                    previous_stage=stage,
+                    root_stage=root_stage,
+                    cte_stages=cte_stages,
                 )
 
             elif isinstance(expression, exp.Union):
                 raise NotImplementedError("Cannot handle Unions yet")
 
             else:
+                table_name = expression.sql()  # expression.this.sql()
+
                 stage = cls.select_stage_type(ast)
-                stage.name = expression.sql()
+                stage.id = create_hash_string(ast.sql(), digits=6)
+                stage.from_ = table_name
                 stage.sql = ast.sql()
                 stage.ast = ast
+
+                if table_name in cte_stages:
+                    stage.add_dependency(cte_stages[table_name])
+
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
 
@@ -127,8 +152,7 @@ class Stage:
         else:
             raise NotImplementedError()
 
-        for _, stage in cte_stages.items():
-            root_stage.add_dependency(stage)
+        return root_stage
 
         @classmethod
         def select_stage_type(cls, ast: exp.Expression):
@@ -163,18 +187,45 @@ class Stage:
         return Scan()
 
     def __init__(self):
+        self.id = str = ""
         self.name: str = ""
+        self.from_: str = ""
         self.sql: str = ""
         self.ast: exp.Expression | None = None
         self.dependents = []
         self.dependencies = []
 
     def __repr__(self) -> str:
-        return f"{self.name}: {self.sql}"
+        return (
+            f"{self.stage_type} - {self.id}:\n{self.sql}\n\nDEPENDENCY:\n{self.from_}"
+        )
 
     def add_dependency(self, dependency: "Stage"):
         self.dependencies.append(dependency)
         dependency.dependents.append(self)
+
+    def find_stage(self, name: str):
+        """
+        Find a stage in the DAG with the given name.
+
+        Args:
+            name: Name of the stage to find.
+
+        Returns:
+            The stage with the given name, or None if no such stage exists in the DAG.
+        """
+        queue = self.dependencies[:]
+
+        while queue:
+            current_stage = queue.pop(0)
+
+            if current_stage.name == name:
+                return current_stage
+
+            for dependency in current_stage.dependencies:
+                queue.append(dependency)
+
+        return None
 
     def copy(self):
         """Returns a deep copy of the object itself"""
