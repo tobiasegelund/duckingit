@@ -29,12 +29,12 @@ class Task:
     subquery_hashed: str
 
     @classmethod
-    def create(cls, query: Query, prefixes: list[str]):
+    def create(cls, query: Query, files: list[str]):
         """Creates a task to execute on a serverless function
 
         Args:
             query, Query: A query parsed by the Query class
-            prefixes, list[str]: A list of prefixes to scan
+            files, list[str]: A list of files to scan
 
         Returns:
             Task<SUBQUERY | SUBQUERY_HASHED>
@@ -43,15 +43,18 @@ class Task:
         # TODO: Update to use Extension Enum
         # TODO: How to handle alias?
         subquery = query.copy().sql
-        for table in query.tables:
+        for table in query.from_:
             table = str(table).replace("ARRAY", "LIST_VALUE")  # Current sqlglot bug
 
-            if table[: len("READ_JSON_AUTO")] == "READ_JSON_AUTO":
-                subquery = subquery.replace(table, f"READ_JSON_AUTO({prefixes})")
-            elif table[: len("READ_CSV_AUTO")] == "READ_CSV_AUTO":
-                subquery = subquery.replace(table, f"READ_CSV_AUTO({prefixes})")
+            read_json = "FROM READ_JSON_AUTO"
+            read_csv = "FROM READ_CSV_AUTO"
+
+            if table[: len(read_json)] == read_json:
+                subquery = subquery.replace(table, f"FROM READ_JSON_AUTO({files})")
+            elif table[: len(read_csv)] == read_csv:
+                subquery = subquery.replace(table, f"FROM READ_CSV_AUTO({files})")
             else:
-                subquery = subquery.replace(table, f"READ_PARQUET({prefixes})")
+                subquery = subquery.replace(table, f"FROM READ_PARQUET({files})")
 
         return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
 
@@ -74,24 +77,6 @@ class Stage:
         root_stage: None = None,
         cte_stages: dict = {},
     ):
-        def select_stage_type(ast: exp.Expression):
-            if isinstance(ast, exp.CTE):
-                return CTE()
-
-            group = ast.args.get("group")
-            if group:
-                return Aggregate()
-
-            sort = ast.args.get("order")
-            if sort:
-                return Sort()
-
-            join = ast.args.get("join")
-            if join:
-                raise NotImplementedError("Joins are not implemented yet")
-
-            return Scan()
-
         ast = ast.copy()
 
         with_ = ast.args.get("with")
@@ -159,7 +144,6 @@ class Stage:
                 if table_name in cte_stages:
                     cte = cte_stages[table_name]
                     stage.add_dependency(cte)
-                    # stage.from_ = cte.sql
 
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
@@ -196,19 +180,19 @@ class Stage:
     def output(self) -> list[str]:
         return list(task.subquery_hashed for task in self.tasks)
 
-    def create_tasks(self, dependency: dict[str, list[str]] | None = None) -> None:
+    def create_tasks(self, dependency: dict[str, list[str]] = {}) -> None:
         # TODO:
         # Replace FROM statements and secure alias
         # Focus on Stage ID
         # Create tasks within stages
         # Dependency will change to multiple dependencies in the future
-        from duckingit._config import DuckConfig, CACHE_PREFIX
+        from duckingit._config import DuckConfig
 
         query = Query.parse(self.sql)
-        if dependency is None:
-            prefixes = query.list_of_prefixes
+        if dependency:
+            files = dependency["output"]
         else:
-            prefixes = list(v for _, v in dependency.items())
+            files = query.list_of_prefixes
 
         # Wide operations can only have 1 invokation
         # Narrow operations like SCAN can have multiple invokations
@@ -219,19 +203,14 @@ class Stage:
         )
 
         if isinstance(invokations, str):
-            invokations = len(prefixes)
+            invokations = len(files)
 
         # TODO: Heuristic to divide the workload between the invokations based on size
         # of prefixes / number of files etc. Or based on some deeper analysis of the query?
-        chunks_of_prefixes = split_list_in_chunks(
-            prefixes, number_of_invokations=invokations
-        )
+        chunks_of_files = split_list_in_chunks(files, number_of_invokations=invokations)
 
-        _tasks: list[Task] = []
-        for chunk in chunks_of_prefixes:
-            _tasks.append(Task.create(query=query, prefixes=chunk))
-
-        self.tasks = _tasks
+        for chunk in chunks_of_files:
+            self.tasks.append(Task.create(query=query, files=chunk))
 
     def add_dependency(self, dependency: "Stage"):
         self.dependencies.append(dependency)
@@ -282,6 +261,25 @@ class Union(Stage):
 
     def __init__(self):
         super().__init__()
+
+
+def select_stage_type(ast: exp.Expression):
+    if isinstance(ast, exp.CTE):
+        return CTE()
+
+    group = ast.args.get("group")
+    if group:
+        return Aggregate()
+
+    sort = ast.args.get("order")
+    if sort:
+        return Sort()
+
+    join = ast.args.get("join")
+    if join:
+        raise NotImplementedError("Joins are not implemented yet")
+
+    return Scan()
 
 
 class Plan:

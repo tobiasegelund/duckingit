@@ -34,6 +34,9 @@ class Controller:
             session.conf, "session.cache_expiration_time"
         )
 
+        self.success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
+        self.failure_queue = getattr(self.session.conf, "aws_sqs.QueueFailure")
+
     def _set_provider(self):
         self.provider = Providers.AWS.klass
 
@@ -76,9 +79,11 @@ class Controller:
     def execute_plan(self, execution_plan: Plan, prefix: str):
         """Executes the execution plan"""
 
-        # bucket = query.bucket
+        # bucket = execution_plan.query.bucket
         context: dict[str, list[str]] = {}
-        queue = set(node for node, deps in execution_plan.dag.items() if not deps)
+        completed = set()
+        queue = set(execution_plan.leaves)
+
         while queue:
             stage = queue.pop()
 
@@ -87,8 +92,16 @@ class Controller:
                     continue
                 queue.add(deb)
 
-            ##
             # CREATE TASKS HERE BASED ON CONTEXT!!
+            stage.create_tasks(dependency=context)
+            # TODO: Perhaps move this inside Stage class?
+            # TODO: Handle multi dependencies
+            # context[stage.id] = list(
+            #     prefix + "/" + i + ".parquet" for i in stage.output
+            # )
+            context["output"] = list(
+                prefix + "/" + i + ".parquet" for i in stage.output
+            )
 
             self.evaluate_execution_stage(execution_stage=stage, source=prefix)
             execution_time = datetime.datetime.now()
@@ -104,9 +117,6 @@ class Controller:
             )
 
     def check_status_of_invokations(self, request_ids: dict[str, Task]):
-        success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
-        failure_queue = getattr(self.session.conf, "aws_sqs.QueueFailure")
-
         cnt = 0
 
         while len(request_ids) > 0:
@@ -114,7 +124,7 @@ class Controller:
             if cnt < len(WAIT_TIME_SUCCESS_QUEUE_SECONDS):
                 wait_time = WAIT_TIME_SUCCESS_QUEUE_SECONDS[cnt]
             messages = self.provider.poll_messages_from_queue(
-                name=success_queue, wait_time_seconds=wait_time
+                name=self.success_queue, wait_time_seconds=wait_time
             )
             if len(messages) > 0:
                 for message in messages:
@@ -125,14 +135,14 @@ class Controller:
 
                 entries = list(message.create_entry_payload() for message in messages)
                 self.provider.delete_messages_from_queue(
-                    name=success_queue, entries=entries
+                    name=self.success_queue, entries=entries
                 )
 
             cnt += 1
 
             if cnt % ITERATIONS_TO_CHECK_FAILED == 0:
                 messages = self.provider.poll_messages_from_queue(
-                    name=failure_queue,
+                    name=self.failure_queue,
                     wait_time_seconds=WAIT_TIME_FAILURE_QUEUE_SECONDS,
                 )
 

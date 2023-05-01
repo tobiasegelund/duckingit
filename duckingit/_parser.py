@@ -45,6 +45,11 @@ class Query:
         yield from self.ast.find_all(expr.Table)
 
     @property
+    def from_(self) -> t.Generator:
+        """Returns a generator that yields over table names, e.g. READ_PARQUET(VALUES(XX))"""
+        yield from self.ast.find_all(expr.From)
+
+    @property
     def bucket(self) -> str:
         """Returns the name of the bucket, e.g. s3://bucket-name-test
 
