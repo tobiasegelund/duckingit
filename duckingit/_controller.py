@@ -26,6 +26,17 @@ class Controller:
             Can be based on number of rows or byte size
     """
 
+    # bucket = query.bucket
+    # context: dict[str, list[str]] = {}
+    # queue = set(node for node, deps in dag.items() if not deps)
+    # while queue:
+    #     node = queue.pop()
+
+    #     for deb in node.dependents:
+    #         if deb.stage_type == Stages.CTE:
+    #             continue
+    #         queue.add(deb)
+
     def __init__(self, session: "DuckSession") -> None:
         self.session = session
 

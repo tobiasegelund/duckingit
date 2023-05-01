@@ -6,10 +6,9 @@ from dataclasses import dataclass
 
 import sqlglot
 import sqlglot.expressions as exp
-from sqlglot import planner
 
 from duckingit._parser import Query
-from duckingit._utils import split_list_in_chunks, create_hash_string, flatten_list
+from duckingit._utils import split_list_in_chunks, create_hash_string
 
 
 class Stages(Enum):
@@ -75,6 +74,24 @@ class Stage:
         root_stage: None = None,
         cte_stages: dict = {},
     ):
+        def select_stage_type(ast: exp.Expression):
+            if isinstance(ast, exp.CTE):
+                return CTE()
+
+            group = ast.args.get("group")
+            if group:
+                return Aggregate()
+
+            sort = ast.args.get("order")
+            if sort:
+                return Sort()
+
+            join = ast.args.get("join")
+            if join:
+                raise NotImplementedError("Joins are not implemented yet")
+
+            return Scan()
+
         ast = ast.copy()
 
         with_ = ast.args.get("with")
@@ -86,7 +103,7 @@ class Stage:
         if with_:
             cte_stages = cte_stages.copy()
             for cte in with_.expressions:
-                stage = cls.select_stage_type(cte)
+                stage = select_stage_type(cte)
                 stage.id = create_hash_string(cte.sql(), digits=6)
                 stage.name = cte.alias
                 stage.alias = cte.alias
@@ -103,13 +120,13 @@ class Stage:
                 cte_stages[cte.alias] = stage
 
         from_ = ast.args.get("from")
-        if isinstance(ast, exp.Select):
+        if isinstance(ast, exp.Select) and from_:
             if len(from_.expressions) > 1:
                 raise NotImplementedError("Multi FROM is not implemented yet")
             expression = from_.expressions[0]
 
             if isinstance(expression, exp.Subquery):
-                stage = cls.select_stage_type(ast)
+                stage = select_stage_type(ast)
                 stage.id = create_hash_string(ast.sql(), digits=6)
                 stage.from_ = expression.sql()
                 stage.alias = expression.alias
@@ -119,6 +136,7 @@ class Stage:
                     previous_stage.add_dependency(stage)
                 if root_stage is None:
                     root_stage = stage
+
                 stage = Stage.from_ast(
                     expression.this,
                     previous_stage=stage,
@@ -132,7 +150,7 @@ class Stage:
             else:
                 table_name = expression.sql()
 
-                stage = cls.select_stage_type(ast)
+                stage = select_stage_type(ast)
                 stage.id = create_hash_string(ast.sql(), digits=6)
                 stage.alias = expression.alias
                 stage.from_ = table_name
@@ -152,41 +170,6 @@ class Stage:
             raise NotImplementedError()
 
         return root_stage
-
-        @classmethod
-        def select_stage_type(cls, ast: exp.Expression):
-            group = ast.args.get("group")
-            if group:
-                return Aggregate()
-
-            sort = ast.args.get("order")
-            if sort:
-                return Sort()
-
-            join = ast.args.get("join")
-            if join:
-                raise NotImplementedError("Joins are not implemented yet")
-
-            return Scan()
-
-    @classmethod
-    def select_stage_type(cls, ast: exp.Expression):
-        if isinstance(ast, exp.CTE):
-            return CTE()
-
-        group = ast.args.get("group")
-        if group:
-            return Aggregate()
-
-        sort = ast.args.get("order")
-        if sort:
-            return Sort()
-
-        join = ast.args.get("join")
-        if join:
-            raise NotImplementedError("Joins are not implemented yet")
-
-        return Scan()
 
     def __init__(self):
         self.id = str = ""
@@ -213,7 +196,11 @@ class Stage:
     def output(self) -> list[str]:
         return list(task.subquery_hashed for task in self.tasks)
 
-    def create_tasks(self, dependency: dict[str : list[str]] | None = None) -> None:
+    def create_tasks(self, dependency: dict[str, list[str]] | None = None) -> None:
+        # TODO:
+        # Replace FROM statements and secure alias
+        # Focus on Stage ID
+        # Create tasks within stages
         # Dependency will change to multiple dependencies in the future
         from duckingit._config import DuckConfig, CACHE_PREFIX
 
@@ -305,12 +292,9 @@ class Plan:
     invokations. Afterwards, its the Controller's job to execute the plan.
 
     Attributes:
-        query, Query: A query parsed by the Query class
-        execution_steps, list[step]: A list of steps to execute using the serverless
-            function
 
     Methods:
-        create_from_query: Creates an execution plan that divides the workload between
+        from_query: Creates an execution plan that divides the workload between
             nodes
     """
 
@@ -321,24 +305,20 @@ class Plan:
         self.root = root
         self.dag = dag
 
-        # self.stages = stages
+        self._length: int | None = None
 
     def __len__(self) -> int:
-        return len(self.stages)
+        if self._length is None:
+            self._length = len([node for node, _ in self.dag.items()])
+        return self._length
 
+    @property
     def leaves(self) -> list[Stage]:
         return [node for node, deps in self.dag.items() if not deps]
 
     @classmethod
     def from_query(cls, query: Query):
         root = Stage.from_ast(ast=query.ast)
-        bucket = query.bucket
-        context: dict[str, list[str]] = {}
-
-        # TODO:
-        # Replace FROM statements and secure alias
-        # Focus on Stage ID
-        # Create tasks within stages
 
         dag = {}
         nodes = {root}
@@ -350,19 +330,10 @@ class Plan:
                 dag[node].add(dep)
                 nodes.add(dep)
 
-        queue = set(node for node, deps in dag.items() if not deps)
-        while queue:
-            node = queue.pop()
-
-            for deb in node.dependents:
-                if deb.stage_type == Stages.CTE:
-                    continue
-                queue.add(deb)
-
         return cls(query=query, root=root, dag=dag)
 
     def __repr__(self) -> str:
-        return f"{self.stages}"
+        return f"{self.dag}"
 
     def copy(self):
         """Returns a deep copy of the object itself"""
