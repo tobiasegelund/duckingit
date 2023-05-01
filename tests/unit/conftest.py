@@ -80,7 +80,7 @@ def MockQuery():
 
 @pytest.fixture
 def MockPlan(MockQuery):
-    plan = Plan.create_from_query(MockQuery, invokations="auto")
+    plan = Plan.from_query(MockQuery)
     yield plan
 
 

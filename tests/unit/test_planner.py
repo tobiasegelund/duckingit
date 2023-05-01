@@ -87,9 +87,9 @@ def test_execution_steps(query, invokations, expected):
         "s3://BUCKET_NAME/2023/02/*",
         "s3://BUCKET_NAME/2023/03/*",
     ]
-    plan = Plan.create_from_query(query=query, invokations=invokations)
+    plan = Plan.from_query(query=query)  # , invokations=invokations
 
-    got = plan.execution_steps
+    got = plan.tasks
 
     assert list(i.subquery for i in got) == expected
 
@@ -100,7 +100,7 @@ def test_plan_error():
     query = "SELECT * FROM scan_parquet(['s3://BUCKET_NAME/2023/*'])"
     query = Query.parse(query)
     try:
-        _ = Plan.create_from_query(query=query, invokations="1")
+        _ = Plan.from_query(query=query)  # invokations=1
     except WrongInvokationType:
         got = True
 

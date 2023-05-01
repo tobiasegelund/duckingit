@@ -41,20 +41,21 @@ class Task:
 
         """
         # TODO: Update to use Extension Enum
-        # TODO: How to handle alias?
         subquery = query.copy().sql
         for table in query.from_:
+            table = table.expressions[0]
+            alias = table.alias
             table = str(table).replace("ARRAY", "LIST_VALUE")  # Current sqlglot bug
 
-            read_json = "FROM READ_JSON_AUTO"
-            read_csv = "FROM READ_CSV_AUTO"
+            read_json = "READ_JSON_AUTO"
+            read_csv = "READ_CSV_AUTO"
 
             if table[: len(read_json)] == read_json:
-                subquery = subquery.replace(table, f"FROM READ_JSON_AUTO({files})")
+                subquery = subquery.replace(table, f"READ_JSON_AUTO({files}) {alias}")
             elif table[: len(read_csv)] == read_csv:
-                subquery = subquery.replace(table, f"FROM READ_CSV_AUTO({files})")
+                subquery = subquery.replace(table, f"READ_CSV_AUTO({files}) {alias}")
             else:
-                subquery = subquery.replace(table, f"FROM READ_PARQUET({files})")
+                subquery = subquery.replace(table, f"READ_PARQUET({files}) {alias}")
 
         return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
 

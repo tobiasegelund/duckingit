@@ -41,12 +41,12 @@ class Query:
 
     @property
     def tables(self) -> t.Generator:
-        """Returns a generator that yields over table names, e.g. READ_PARQUET(VALUES(XX))"""
+        """Returns a generator that yields over table expressions, e.g. READ_PARQUET(VALUES(XX))"""
         yield from self.ast.find_all(expr.Table)
 
     @property
     def from_(self) -> t.Generator:
-        """Returns a generator that yields over table names, e.g. READ_PARQUET(VALUES(XX))"""
+        """Returns a generator that yields over from expressions, e.g. FROM READ_PARQUET(VALUES(XX))"""
         yield from self.ast.find_all(expr.From)
 
     @property
