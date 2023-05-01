@@ -31,9 +31,9 @@ class AWS:
             InvocationType="RequestResponse",
         )
 
-    def invoke(self, execution_steps: list[Task], prefix: str) -> dict[str, Task]:
+    def invoke(self, execution_tasks: list[Task], prefix: str) -> dict[str, Task]:
         request_ids = {}
-        for step in execution_steps:
+        for step in execution_tasks:
             key = f"{prefix}/{step.subquery_hashed}.parquet"
             request_payload = json.dumps({"query": step.subquery, "key": key})
             request_id = self._invoke_lambda(request_payload=request_payload)

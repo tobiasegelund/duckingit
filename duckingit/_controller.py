@@ -1,7 +1,7 @@
 import datetime
 import typing as t
 
-from duckingit._planner import Plan, Task
+from duckingit._planner import Plan, Task, Stage, Stages
 from duckingit.integrations import Providers
 from duckingit._utils import scan_source_for_files
 from duckingit._exceptions import FailedLambdaFunctions
@@ -26,17 +26,6 @@ class Controller:
             Can be based on number of rows or byte size
     """
 
-    # bucket = query.bucket
-    # context: dict[str, list[str]] = {}
-    # queue = set(node for node, deps in dag.items() if not deps)
-    # while queue:
-    #     node = queue.pop()
-
-    #     for deb in node.dependents:
-    #         if deb.stage_type == Stages.CTE:
-    #             continue
-    #         queue.add(deb)
-
     def __init__(self, session: "DuckSession") -> None:
         self.session = session
 
@@ -52,15 +41,15 @@ class Controller:
         return self.session.metadata_cached
 
     def update_cache_metadata(
-        self, execution_plan: Plan, execution_time: datetime.datetime
+        self, execution_stage: Stage, execution_time: datetime.datetime
     ) -> None:
-        for step in execution_plan.execution_steps:
-            self.session.metadata_cached[step.subquery_hashed] = execution_time
+        for task in execution_stage.tasks:
+            self.session.metadata_cached[task.subquery_hashed] = execution_time
 
     def scan_cache_data(self, source: str) -> list[str]:
         return scan_source_for_files(source=source)
 
-    def evaluate_execution_plan(self, execution_plan: Plan, source: str) -> None:
+    def evaluate_execution_stage(self, execution_stage: Stage, source: str) -> None:
         """Evaluate the execution plan
 
         For example filter cached objects to minimize compute power
@@ -68,7 +57,7 @@ class Controller:
         cached_objects = self.scan_cache_data(source=source)
         session_cache_metadata = self.fetch_cache_metadata()
 
-        for step in execution_plan.execution_steps[:]:
+        for step in execution_stage.tasks[:]:
             last_executed = session_cache_metadata.get(step.subquery_hashed, None)
 
             if last_executed is None:
@@ -82,23 +71,37 @@ class Controller:
                 last_executed_minutes < self.cache_expiration_time
                 and step.subquery_hashed in cached_objects
             ):
-                execution_plan.execution_steps.remove(step)
+                execution_stage.tasks.remove(step)
 
     def execute_plan(self, execution_plan: Plan, prefix: str):
         """Executes the execution plan"""
-        self.evaluate_execution_plan(execution_plan=execution_plan, source=prefix)
 
-        execution_time = datetime.datetime.now()
-        if len(execution_plan.execution_steps) > 0:
-            request_ids = self.provider.invoke(
-                execution_steps=execution_plan.execution_steps, prefix=prefix
+        # bucket = query.bucket
+        context: dict[str, list[str]] = {}
+        queue = set(node for node, deps in execution_plan.dag.items() if not deps)
+        while queue:
+            stage = queue.pop()
+
+            for deb in stage.dependents:
+                if deb.stage_type == Stages.CTE:
+                    continue
+                queue.add(deb)
+
+            ##
+            # CREATE TASKS HERE BASED ON CONTEXT!!
+
+            self.evaluate_execution_stage(execution_stage=stage, source=prefix)
+            execution_time = datetime.datetime.now()
+            if len(stage.tasks) > 0:
+                request_ids = self.provider.invoke(
+                    execution_tasks=stage.tasks, prefix=prefix
+                )
+
+                self.check_status_of_invokations(request_ids=request_ids)
+
+            self.update_cache_metadata(
+                execution_stage=stage, execution_time=execution_time
             )
-
-            self.check_status_of_invokations(request_ids=request_ids)
-
-        self.update_cache_metadata(
-            execution_plan=execution_plan, execution_time=execution_time
-        )
 
     def check_status_of_invokations(self, request_ids: dict[str, Task]):
         success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
