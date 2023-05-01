@@ -4,9 +4,7 @@ import copy
 from dataclasses import dataclass
 
 import sqlglot
-import sqlglot.expressions as expr
-
-# from sqlglot.optimizer import optimizer
+import sqlglot.expressions as exp
 
 from duckingit._exceptions import InvalidFilesystem, ParserError
 from duckingit._utils import create_hash_string, scan_source_for_prefixes
@@ -16,7 +14,7 @@ from duckingit._utils import create_hash_string, scan_source_for_prefixes
 class Query:
     sql: str
     hashed: str
-    ast: expr.Expression
+    ast: exp.Expression
 
     _list_of_prefixes: list[str] | None = None
 
@@ -42,12 +40,12 @@ class Query:
     @property
     def tables(self) -> t.Generator:
         """Returns a generator that yields over table expressions, e.g. READ_PARQUET(VALUES(XX))"""
-        yield from self.ast.find_all(expr.Table)
+        yield from self.ast.find_all(exp.Table)
 
     @property
     def from_(self) -> t.Generator:
         """Returns a generator that yields over from expressions, e.g. FROM READ_PARQUET(VALUES(XX))"""
-        yield from self.ast.find_all(expr.From)
+        yield from self.ast.find_all(exp.From)
 
     @property
     def bucket(self) -> str:
