@@ -2,7 +2,7 @@ import pytest
 
 from duckingit._exceptions import WrongInvokationType
 from duckingit._parser import Query
-from duckingit._planner import Plan, Step
+from duckingit._planner import Plan, Task
 
 
 # def test_execution_plan():

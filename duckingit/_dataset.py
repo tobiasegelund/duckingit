@@ -7,6 +7,7 @@ from duckingit._planner import Plan
 from duckingit._exceptions import DatasetExistError
 from duckingit._controller import Controller
 from duckingit._utils import scan_source_for_files
+from duckingit._config import CACHE_PREFIX
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
@@ -123,7 +124,9 @@ class DatasetWriter:
         assert isinstance(table_name, str), "`table_name` must be of type string"
         self._dataset._execute_plan(prefix=self._dataset.default_prefix)
 
-        self._create_tmp_table(table_name=table_name, objects=self._dataset.stored_cached_objects)
+        self._create_tmp_table(
+            table_name=table_name, objects=self._dataset.stored_cached_objects
+        )
 
         self._session.metadata[table_name] = self._dataset.execution_plan.query.sql
 
@@ -136,8 +139,6 @@ class Dataset:
     Dependency graph of hash values?
     """
 
-    _CACHE_PREFIX = ".cache/duckingit"
-
     def __init__(
         self,
         execution_plan: Plan,
@@ -148,7 +149,7 @@ class Dataset:
 
         self._set_controller()
 
-        self.default_prefix = f"{execution_plan.query.bucket}/{self._CACHE_PREFIX}"
+        self.default_prefix = f"{execution_plan.query.bucket}/{CACHE_PREFIX}"
 
     def __repr__(self) -> str:
         return f"""Dataset<SQL=`{self.execution_plan.query.sql}` | HASH_VALUE=`{self.execution_plan.query.hashed}`>"""
@@ -171,9 +172,13 @@ class Dataset:
         )
 
     def _execute_plan(self, prefix: str):
-        self._controller.execute_plan(execution_plan=self.execution_plan.copy(), prefix=prefix)
+        self._controller.execute_plan(
+            execution_plan=self.execution_plan.copy(), prefix=prefix
+        )
 
     def show(self) -> duckdb.DuckDBPyRelation:
         self._execute_plan(prefix=self.default_prefix)
 
-        return self._session.conn.sql(f"SELECT * FROM READ_PARQUET({self.stored_cached_objects})")
+        return self._session.conn.sql(
+            f"SELECT * FROM READ_PARQUET({self.stored_cached_objects})"
+        )
