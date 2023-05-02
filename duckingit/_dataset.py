@@ -51,10 +51,10 @@ class Modes(Enum):
         return _funcs[self]
 
 
-class Formats(Enum):
-    DELTA = "delta"
-    ICEBERG = "iceberg"
-    HUDI = "hudi"
+# class Formats(Enum):
+#     DELTA = "delta"
+#     ICEBERG = "iceberg"
+#     HUDI = "hudi"
 
 
 class DatasetWriter:
@@ -167,8 +167,8 @@ class Dataset:
     @property
     def stored_cached_objects(self) -> list[str]:
         return list(
-            self.default_prefix + "/" + step.subquery_hashed + ".parquet"
-            for step in self.execution_plan.execution_steps
+            self.default_prefix + "/" + task.subquery_hashed + ".parquet"
+            for task in self.execution_plan.root.tasks
         )
 
     def _execute_plan(self, prefix: str):

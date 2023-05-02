@@ -61,7 +61,7 @@ class Query:
             if not match:
                 continue
 
-            return "s3://" + match.group(1)
+            return "s3://" + match.group(1)  # yield?
 
         raise ValueError("Not able to locate any bucket name in query")
 
@@ -82,8 +82,7 @@ class Query:
             return match.group(1)
 
         raise InvalidFilesystem(
-            "An acceptable filesystem, e.g. 's3://BUCKET_NAME/*', couldn't be \
-found."
+            "An acceptable filesystem, e.g. 's3://BUCKET_NAME/*', couldn't be found."
         )
 
     def copy(self):

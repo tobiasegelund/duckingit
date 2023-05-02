@@ -1,10 +1,8 @@
-import re
 import typing as t
 from enum import Enum
 import copy
 from dataclasses import dataclass
 
-import sqlglot
 import sqlglot.expressions as exp
 
 from duckingit._parser import Query
@@ -108,7 +106,7 @@ class Stage:
         from_ = ast.args.get("from")
         if isinstance(ast, exp.Select) and from_:
             if len(from_.expressions) > 1:
-                raise NotImplementedError("Multi FROM is not implemented yet")
+                raise NotImplementedError("Multi FROM isn't supported")
             expression = from_.expressions[0]
 
             if isinstance(expression, exp.Subquery):
@@ -170,6 +168,9 @@ class Stage:
 
     def __repr__(self) -> str:
         return f"{self.stage_type} - {self.id}: {self.sql}"
+
+    def __len__(self) -> int:
+        return len(self.tasks)
 
     @property
     def name_or_sql(self) -> None:

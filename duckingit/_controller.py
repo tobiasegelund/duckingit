@@ -5,6 +5,7 @@ from duckingit._planner import Plan, Task, Stage, Stages
 from duckingit.integrations import Providers
 from duckingit._utils import scan_source_for_files
 from duckingit._exceptions import FailedLambdaFunctions
+from duckingit._config import CACHE_PREFIX
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
@@ -55,7 +56,7 @@ class Controller:
     def evaluate_execution_stage(self, execution_stage: Stage, source: str) -> None:
         """Evaluate the execution plan
 
-        For example filter cached objects to minimize compute power
+        Filters cached objects to minimize compute power
         """
         cached_objects = self.scan_cache_data(source=source)
         session_cache_metadata = self.fetch_cache_metadata()
@@ -78,8 +79,8 @@ class Controller:
 
     def execute_plan(self, execution_plan: Plan, prefix: str):
         """Executes the execution plan"""
+        default_prefix = f"{execution_plan.query.bucket}/{CACHE_PREFIX}"
 
-        # bucket = execution_plan.query.bucket
         context: dict[str, list[str]] = {}
         completed = set()
         queue = set(execution_plan.leaves)
@@ -90,28 +91,38 @@ class Controller:
             for deb in stage.dependents:
                 if deb.stage_type == Stages.CTE:
                     continue
-                queue.add(deb)
+                if deb not in completed:
+                    queue.add(deb)
 
             # CREATE TASKS HERE BASED ON CONTEXT!!
             stage.create_tasks(dependency=context)
+            # TODO: default prefix must only be defined once
             # TODO: Perhaps move this inside Stage class?
             # TODO: Handle multi dependencies
             # context[stage.id] = list(
             #     prefix + "/" + i + ".parquet" for i in stage.output
             # )
-            context["output"] = list(
-                prefix + "/" + i + ".parquet" for i in stage.output
-            )
 
-            self.evaluate_execution_stage(execution_stage=stage, source=prefix)
+            if stage.id == execution_plan.root.id:
+                context["output"] = list(
+                    prefix + "/" + i + ".parquet" for i in stage.output
+                )
+                self.evaluate_execution_stage(execution_stage=stage, source=prefix)
+            else:
+                context["output"] = list(
+                    default_prefix + "/" + i + ".parquet" for i in stage.output
+                )
+                self.evaluate_execution_stage(execution_stage=stage, source=prefix)
+
             execution_time = datetime.datetime.now()
-            if len(stage.tasks) > 0:
+            if len(stage) > 0:
                 request_ids = self.provider.invoke(
                     execution_tasks=stage.tasks, prefix=prefix
                 )
 
                 self.check_status_of_invokations(request_ids=request_ids)
 
+            completed.add(stage)
             self.update_cache_metadata(
                 execution_stage=stage, execution_time=execution_time
             )
