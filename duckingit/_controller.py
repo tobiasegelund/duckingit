@@ -104,15 +104,12 @@ class Controller:
             # )
 
             if stage.id == execution_plan.root.id:
-                context["output"] = list(
-                    prefix + "/" + i + ".parquet" for i in stage.output
-                )
-                self.evaluate_execution_stage(execution_stage=stage, source=prefix)
-            else:
-                context["output"] = list(
-                    default_prefix + "/" + i + ".parquet" for i in stage.output
-                )
-                self.evaluate_execution_stage(execution_stage=stage, source=prefix)
+                default_prefix = prefix
+
+            context["output"] = list(
+                default_prefix + "/" + i + ".parquet" for i in stage.output
+            )
+            self.evaluate_execution_stage(execution_stage=stage, source=prefix)
 
             execution_time = datetime.datetime.now()
             if len(stage) > 0:
