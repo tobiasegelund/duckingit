@@ -161,7 +161,7 @@ class Controller:
 
                 if len(messages) > 0:
                     self.provider.purge_queue(self.failure_queue)  # clean up
-                    raise FailedLambdaFunctions(f"{messages} failed")
+                    raise FailedLambdaFunctions(f"{messages}")
 
     # def show(self):
     #     # Select only X parquet files?

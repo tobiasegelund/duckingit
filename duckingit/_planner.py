@@ -268,7 +268,8 @@ def select_stage_type(ast: exp.Expression):
         return CTE()
 
     group = ast.args.get("group")
-    if group:
+    agg = list(i for i in ast.expressions if isinstance(i, exp.Count))
+    if group or agg:
         return Aggregate()
 
     sort = ast.args.get("order")

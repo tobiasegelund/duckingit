@@ -13,6 +13,10 @@ class SQSMessage:
     request_id: str
     message_id: str
     receipt_handle: str
+    response_payload: str
+
+    def __repr__(self) -> str:
+        return self.response_payload
 
     def create_entry_payload(self) -> dict[str, str]:
         return {"Id": self.message_id, "ReceiptHandle": self.receipt_handle}
@@ -95,13 +99,15 @@ class AWS:
         self._validate_response(response=response)
 
     def _collect_items_from_sqs_message(self, message: dict) -> SQSMessage:
-        request_id = (
-            json.loads(message.get("Body")).get("requestContext").get("requestId")
-        )
+        body = json.loads(message.get("Body"))
+
+        request_id = body.get("requestContext").get("requestId")
+        response_payload = body.get("responsePayload").get("errorMessage", "")
         return SQSMessage(
             request_id=request_id,
             message_id=message.get("MessageId"),
             receipt_handle=message.get("ReceiptHandle"),
+            response_payload=response_payload,
         )
 
     def delete_messages_from_queue(
