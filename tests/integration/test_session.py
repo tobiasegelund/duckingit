@@ -19,7 +19,7 @@ BUCKET_NAME = "s3-duckdb-tobiasegelund"
     ],
 )
 def test_DuckSession_execute(query, expected, session):
-    got = session.execute(query=query)
+    got = session.sql(query=query).show()
 
     assert len(got.fetchall()) == expected
 

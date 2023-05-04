@@ -4,9 +4,7 @@ from duckingit._config import DuckConfig
 def test_DuckConfig():
     got = False
     try:
-        DuckConfig(function_name="TestFunc").memory_size(128).timeout(
-            30
-        ).warm_up().update()
+        conf = DuckConfig().set("aws_lambda.MemorySize", 128)
         got = True
     except Exception:
         got = False
