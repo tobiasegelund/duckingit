@@ -268,7 +268,7 @@ def select_stage_type(ast: exp.Expression):
         return CTE()
 
     group = ast.args.get("group")
-    agg = list(i for i in ast.expressions if isinstance(i, exp.Count))
+    agg = list(i for i in ast.expressions if isinstance(i, exp.AggFunc))
     if group or agg:
         return Aggregate()
 
