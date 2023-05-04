@@ -10,8 +10,8 @@ if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
 
 
-ITERATIONS_TO_CHECK_FAILED = 10
-WAIT_TIME_SUCCESS_QUEUE_SECONDS = [2, 2, 4, 6]
+ITERATIONS_TO_CHECK_FAILED = 5
+WAIT_TIME_SUCCESS_QUEUE_SECONDS = [2] * ITERATIONS_TO_CHECK_FAILED
 WAIT_TIME_FAILURE_QUEUE_SECONDS = 5
 
 
@@ -36,6 +36,7 @@ class Controller:
 
         self.success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
         self.failure_queue = getattr(self.session.conf, "aws_sqs.QueueFailure")
+        self.verbose = getattr(self.session.conf, "session.verbose")
 
     def _set_provider(self):
         self.provider = Providers.AWS.klass
@@ -97,6 +98,8 @@ class Controller:
             # context[stage.id] = list(
             #     prefix + "/" + i + ".parquet" for i in stage.output
             # )
+            if self.verbose:
+                print(f"RUNNING STAGE: [{stage}]")
 
             if stage.id == execution_plan.root.id and prefix != "":
                 default_prefix = prefix
@@ -151,6 +154,7 @@ class Controller:
                 )
 
                 if len(messages) > 0:
+                    self.provider.purge_queue(self.failure_queue)  # clean up
                     raise FailedLambdaFunctions(f"{messages} failed")
 
     # def show(self):
