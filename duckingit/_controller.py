@@ -11,7 +11,7 @@ if t.TYPE_CHECKING:
 
 
 ITERATIONS_TO_CHECK_FAILED = 5
-WAIT_TIME_SUCCESS_QUEUE_SECONDS = [2] * ITERATIONS_TO_CHECK_FAILED
+WAIT_TIME_SUCCESS_QUEUE_SECONDS = [4] * ITERATIONS_TO_CHECK_FAILED
 WAIT_TIME_FAILURE_QUEUE_SECONDS = 5
 
 
@@ -93,7 +93,7 @@ class Controller:
                     queue.add(deb)
 
             # CREATE TASKS HERE BASED ON CONTEXT!!
-            stage.create_tasks(dependency=dependencies)
+            stage.create_tasks(dependencies=dependencies)
             # TODO: Handle multi dependencies
             # context[stage.id] = list(
             #     prefix + "/" + i + ".parquet" for i in stage.output
@@ -125,6 +125,7 @@ class Controller:
     def check_status_of_invokations(self, request_ids: dict[str, Task]):
         cnt = 0
 
+        total_tasks = len(request_ids)
         while len(request_ids) > 0:
             # Logic to speed up fast queries
             if cnt < len(WAIT_TIME_SUCCESS_QUEUE_SECONDS):
@@ -143,6 +144,11 @@ class Controller:
                 entries = list(message.create_entry_payload() for message in messages)
                 self.provider.delete_messages_from_queue(
                     name=self.success_queue, entries=entries
+                )
+
+            if self.verbose:
+                print(
+                    f"\tTASKS COMPLETED: {total_tasks - len(request_ids)}/{total_tasks}"
                 )
 
             cnt += 1

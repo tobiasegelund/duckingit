@@ -184,17 +184,13 @@ class Stage:
     def output(self) -> list[str]:
         return list(task.subquery_hashed for task in self.tasks)
 
-    def create_tasks(self, dependency: dict[str, list[str]] = {}) -> None:
-        # TODO:
-        # Replace FROM statements and secure alias
-        # Focus on Stage ID
-        # Create tasks within stages
-        # Dependency will change to multiple dependencies in the future
+    def create_tasks(self, dependencies: dict[str, list[str]] = {}) -> None:
+        # TODO: Focus on Stage ID in dependencies
         from duckingit._config import DuckConfig
 
         query = Query.parse(self.sql)
-        if dependency:
-            files = dependency["output"]
+        if dependencies:
+            files = dependencies["output"]
         else:
             files = query.list_of_prefixes
 
