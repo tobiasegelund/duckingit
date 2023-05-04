@@ -122,10 +122,10 @@ class DatasetWriter:
             >>> dataset.write.save_as_temp_table(table_name="test")
         """
         assert isinstance(table_name, str), "`table_name` must be of type string"
-        self._dataset._execute_plan(prefix=self._dataset.default_prefix)
+        self._dataset._execute_plan()
 
         self._create_tmp_table(
-            table_name=table_name, objects=self._dataset.stored_cached_objects
+            table_name=table_name, objects=self._dataset.stored_objects
         )
 
         self._session.metadata[table_name] = self._dataset.execution_plan.query.sql
@@ -165,20 +165,23 @@ class Dataset:
         raise NotImplementedError()
 
     @property
-    def stored_cached_objects(self) -> list[str]:
+    def stored_objects(self) -> list[str]:
         return list(
             self.default_prefix + "/" + task.subquery_hashed + ".parquet"
             for task in self.execution_plan.root.tasks
         )
 
-    def _execute_plan(self, prefix: str):
+    def _execute_plan(self, prefix: str = ""):
         self._controller.execute_plan(
-            execution_plan=self.execution_plan.copy(), prefix=prefix
+            execution_plan=self.execution_plan.copy(),
+            prefix=prefix,
+            default_prefix=self.default_prefix,
         )
 
     def show(self) -> duckdb.DuckDBPyRelation:
         self._execute_plan(prefix=self.default_prefix)
+        print(self.stored_objects)
 
         return self._session.conn.sql(
-            f"SELECT * FROM READ_PARQUET({self.stored_cached_objects})"
+            f"SELECT * FROM READ_PARQUET({self.stored_objects})"
         )

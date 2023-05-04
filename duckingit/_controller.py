@@ -5,7 +5,6 @@ from duckingit._planner import Plan, Task, Stage, Stages
 from duckingit.integrations import Providers
 from duckingit._utils import scan_source_for_files
 from duckingit._exceptions import FailedLambdaFunctions
-from duckingit._config import CACHE_PREFIX
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
@@ -77,10 +76,8 @@ class Controller:
             ):
                 execution_stage.tasks.remove(step)
 
-    def execute_plan(self, execution_plan: Plan, prefix: str):
+    def execute_plan(self, execution_plan: Plan, prefix: str, default_prefix: str):
         """Executes the execution plan"""
-        default_prefix = f"{execution_plan.query.bucket}/{CACHE_PREFIX}"
-
         context: dict[str, list[str]] = {}
         completed = set()
         queue = set(execution_plan.leaves)
@@ -96,14 +93,12 @@ class Controller:
 
             # CREATE TASKS HERE BASED ON CONTEXT!!
             stage.create_tasks(dependency=context)
-            # TODO: default prefix must only be defined once
-            # TODO: Perhaps move this inside Stage class?
             # TODO: Handle multi dependencies
             # context[stage.id] = list(
             #     prefix + "/" + i + ".parquet" for i in stage.output
             # )
 
-            if stage.id == execution_plan.root.id:
+            if stage.id == execution_plan.root.id and prefix != "":
                 default_prefix = prefix
 
             context["output"] = list(
@@ -134,6 +129,7 @@ class Controller:
             messages = self.provider.poll_messages_from_queue(
                 name=self.success_queue, wait_time_seconds=wait_time
             )
+
             if len(messages) > 0:
                 for message in messages:
                     try:
