@@ -38,7 +38,6 @@ class Task:
             Task<SUBQUERY | SUBQUERY_HASHED>
 
         """
-        # TODO: Update to use Extension Enum
         subquery = query.copy().sql
         for table in query.from_:
             table = table.expressions[0]
@@ -56,6 +55,9 @@ class Task:
                 subquery = subquery.replace(table, f"READ_PARQUET({files}) {alias}")
 
         return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
+
+    def __hash__(self) -> int:
+        return hash(self.subquery)
 
     def __repr__(self) -> str:
         return f"Task<QUERY='{self.subquery}' | HASH='{self.subquery_hashed}'>"
@@ -164,7 +166,7 @@ class Stage:
         self.dependents = []
         self.dependencies = []
 
-        self.tasks: list[Task] = []
+        self.tasks: t.Set[Task] = set()
 
     def __repr__(self) -> str:
         return f"{self.stage_type} - {self.id}: {self.sql}"
@@ -212,7 +214,7 @@ class Stage:
         chunks_of_files = split_list_in_chunks(files, number_of_invokations=invokations)
 
         for chunk in chunks_of_files:
-            self.tasks.append(Task.create(query=query, files=chunk))
+            self.tasks.add(Task.create(query=query, files=chunk))
 
     def add_dependency(self, dependency: "Stage"):
         self.dependencies.append(dependency)

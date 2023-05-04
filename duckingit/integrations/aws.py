@@ -1,4 +1,5 @@
 import json
+import typing as t
 from dataclasses import dataclass
 
 import boto3
@@ -31,7 +32,7 @@ class AWS:
             InvocationType="RequestResponse",
         )
 
-    def invoke(self, execution_tasks: list[Task], prefix: str) -> dict[str, Task]:
+    def invoke(self, execution_tasks: t.Set[Task], prefix: str) -> dict[str, Task]:
         request_ids = {}
         for step in execution_tasks:
             key = f"{prefix}/{step.subquery_hashed}.parquet"

@@ -173,14 +173,13 @@ class Dataset:
 
     def _execute_plan(self, prefix: str = ""):
         self._controller.execute_plan(
-            execution_plan=self.execution_plan.copy(),
+            execution_plan=self.execution_plan,
             prefix=prefix,
             default_prefix=self.default_prefix,
         )
 
     def show(self) -> duckdb.DuckDBPyRelation:
         self._execute_plan(prefix=self.default_prefix)
-        print(self.stored_objects)
 
         return self._session.conn.sql(
             f"SELECT * FROM READ_PARQUET({self.stored_objects})"

@@ -49,18 +49,18 @@ class Controller:
         for task in execution_stage.tasks:
             self.session.metadata_cached[task.subquery_hashed] = execution_time
 
-    def scan_cache_data(self, source: str) -> list[str]:
-        return scan_source_for_files(source=source)
+    def scan_cache_data(self, prefix: str) -> list[str]:
+        return scan_source_for_files(source=prefix)
 
-    def evaluate_execution_stage(self, execution_stage: Stage, source: str) -> None:
+    def evaluate_execution_stage(self, execution_stage: Stage, prefix: str) -> None:
         """Evaluate the execution plan
 
         Filters cached objects to minimize compute power
         """
-        cached_objects = self.scan_cache_data(source=source)
+        cached_objects = self.scan_cache_data(prefix=prefix)
         session_cache_metadata = self.fetch_cache_metadata()
 
-        for step in execution_stage.tasks[:]:
+        for step in list(execution_stage.tasks):
             last_executed = session_cache_metadata.get(step.subquery_hashed, None)
 
             if last_executed is None:
@@ -78,7 +78,7 @@ class Controller:
 
     def execute_plan(self, execution_plan: Plan, prefix: str, default_prefix: str):
         """Executes the execution plan"""
-        context: dict[str, list[str]] = {}
+        dependencies: dict[str, list[str]] = {}
         completed = set()
         queue = set(execution_plan.leaves)
 
@@ -88,11 +88,11 @@ class Controller:
             for deb in stage.dependents:
                 if deb.stage_type == Stages.CTE:
                     continue
-                if deb not in completed:
+                if deb.id not in completed:
                     queue.add(deb)
 
             # CREATE TASKS HERE BASED ON CONTEXT!!
-            stage.create_tasks(dependency=context)
+            stage.create_tasks(dependency=dependencies)
             # TODO: Handle multi dependencies
             # context[stage.id] = list(
             #     prefix + "/" + i + ".parquet" for i in stage.output
@@ -101,20 +101,20 @@ class Controller:
             if stage.id == execution_plan.root.id and prefix != "":
                 default_prefix = prefix
 
-            context["output"] = list(
-                default_prefix + "/" + i + ".parquet" for i in stage.output
-            )
-            self.evaluate_execution_stage(execution_stage=stage, source=prefix)
+            dependencies["output"] = [
+                f"{default_prefix}/{i}.parquet" for i in stage.output
+            ]
+            # self.evaluate_execution_stage(execution_stage=stage, prefix=default_prefix)
 
             execution_time = datetime.datetime.now()
-            if len(stage) > 0:
+            if len(stage.tasks) > 0:
                 request_ids = self.provider.invoke(
-                    execution_tasks=stage.tasks, prefix=prefix
+                    execution_tasks=stage.tasks, prefix=default_prefix
                 )
 
                 self.check_status_of_invokations(request_ids=request_ids)
 
-            completed.add(stage)
+            completed.add(stage.id)
             self.update_cache_metadata(
                 execution_stage=stage, execution_time=execution_time
             )
