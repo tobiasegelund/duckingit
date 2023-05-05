@@ -10,6 +10,9 @@ test-integration:
 lint:
 	flake8 duckingit tests
 
+install-precommit:
+	pre-commit install
+
 build-image:
 	cd image/ && docker build . -t duckdb
 

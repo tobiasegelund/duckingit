@@ -3,11 +3,11 @@ from enum import Enum
 
 import duckdb
 
-from duckingit._planner import Plan
-from duckingit._exceptions import DatasetExistError
-from duckingit._controller import Controller
-from duckingit._utils import scan_source_for_files
 from duckingit._config import CACHE_PREFIX
+from duckingit._controller import Controller
+from duckingit._exceptions import DatasetExistError
+from duckingit._planner import Plan
+from duckingit._utils import scan_source_for_files
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession
@@ -124,9 +124,7 @@ class DatasetWriter:
         assert isinstance(table_name, str), "`table_name` must be of type string"
         self._dataset._execute_plan()
 
-        self._create_tmp_table(
-            table_name=table_name, objects=self._dataset.stored_objects
-        )
+        self._create_tmp_table(table_name=table_name, objects=self._dataset.stored_objects)
 
         self._session.metadata[table_name] = self._dataset.execution_plan.query.sql
 
@@ -181,6 +179,4 @@ class Dataset:
     def show(self) -> duckdb.DuckDBPyRelation:
         self._execute_plan(prefix=self.default_prefix)
 
-        return self._session.conn.sql(
-            f"SELECT * FROM READ_PARQUET({self.stored_objects})"
-        )
+        return self._session.conn.sql(f"SELECT * FROM READ_PARQUET({self.stored_objects})")

@@ -1,6 +1,6 @@
+import copy
 import re
 import typing as t
-import copy
 from dataclasses import dataclass
 
 import sqlglot

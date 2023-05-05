@@ -2,14 +2,13 @@
 TODO: Perhaps remove hardcoded limits and let boto3 raise the exception
 Trade-off: Fast vs slow response
 """
-import typing as t
 import copy
+import typing as t
 from dataclasses import dataclass
 
-from duckingit.integrations import Providers
 from duckingit._exceptions import ConfigurationError, WrongInvokationType
 from duckingit._utils import cast_mapping_to_string_with_newlines
-
+from duckingit.integrations import Providers
 
 CACHE_PREFIX = ".cache/duckingit"
 
@@ -46,9 +45,7 @@ class LambdaConfig(ServiceConfig):
             lower_limit = 128
             upper_limit = 10240
             if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
-                raise ValueError(
-                    f"`MemorySize` must be between {lower_limit} and {upper_limit} MB"
-                )
+                raise ValueError(f"`MemorySize` must be between {lower_limit} and {upper_limit} MB")
 
         elif name == "WarmUp":
             if not isinstance(value, bool):
@@ -89,17 +86,13 @@ class SQSConfig(ServiceConfig):
     MessageRetentionPeriod: int = 900
 
     def __repr__(self) -> str:
-        repr = cast_mapping_to_string_with_newlines(
-            service_name="aws_sqs", mapping=self.__dict__
-        )
+        repr = cast_mapping_to_string_with_newlines(service_name="aws_sqs", mapping=self.__dict__)
         return repr
 
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "MaxNumberOfMessages":
             if not ((value <= 10) and isinstance(value, int)):
-                raise ValueError(
-                    "`MaxNumberOfMessages` must be between 1 and 10 seconds"
-                )
+                raise ValueError("`MaxNumberOfMessages` must be between 1 and 10 seconds")
 
         elif name == "VisibilityTimeout":
             if not ((value <= 60) and isinstance(value, int)):
@@ -149,9 +142,7 @@ class SQSConfig(ServiceConfig):
             if k in ("DelaySeconds", "MaximumMessageSize", "MessageRetentionPeriod")
         }
         for name in [self.__dict__["QueueSuccess"], self.__dict__["QueueFailure"]]:
-            Providers.AWS.klass.update_sqs_configurations(
-                name=name, configs=config_dict
-            )
+            Providers.AWS.klass.update_sqs_configurations(name=name, configs=config_dict)
 
 
 # @dataclass
@@ -169,9 +160,7 @@ class SessionConfig(ServiceConfig):
     verbose: bool = False
 
     def __repr__(self) -> str:
-        repr = cast_mapping_to_string_with_newlines(
-            service_name="session", mapping=self.__dict__
-        )
+        repr = cast_mapping_to_string_with_newlines(service_name="session", mapping=self.__dict__)
         return repr
 
     def __setattr__(self, name: str, value: t.Any) -> None:
@@ -183,9 +172,7 @@ class SessionConfig(ServiceConfig):
             if not (isinstance(value, int) or isinstance(value, str)):
                 if isinstance(value, str):
                     if value != "auto":
-                        raise WrongInvokationType(
-                            "`value` can only be 'auto' or an integer"
-                        )
+                        raise WrongInvokationType("`value` can only be 'auto' or an integer")
                 raise ValueError("`max invokations` must be an integer")
 
         elif name == "provider":
@@ -211,9 +198,7 @@ class DuckDBConfig(ServiceConfig):
     read_only: bool = False
 
     def __repr__(self) -> str:
-        repr = cast_mapping_to_string_with_newlines(
-            service_name="duckdb", mapping=self.__dict__
-        )
+        repr = cast_mapping_to_string_with_newlines(service_name="duckdb", mapping=self.__dict__)
         return repr
 
     def __setattr__(self, name: str, value: t.Any) -> None:

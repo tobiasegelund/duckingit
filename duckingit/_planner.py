@@ -1,12 +1,12 @@
-import typing as t
-from enum import Enum
 import copy
+import typing as t
 from dataclasses import dataclass
+from enum import Enum
 
 import sqlglot.expressions as exp
 
 from duckingit._parser import Query
-from duckingit._utils import split_list_in_chunks, create_hash_string
+from duckingit._utils import create_hash_string, split_list_in_chunks
 
 
 class Stages(Enum):

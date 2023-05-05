@@ -6,3 +6,5 @@ flake8
 build
 wheel
 twine
+isort
+mypy
