@@ -30,9 +30,7 @@ class Controller:
         self.session = session
 
         self._set_provider()
-        self.cache_expiration_time = getattr(
-            session.conf, "session.cache_expiration_time"
-        )
+        self.cache_expiration_time = getattr(session.conf, "session.cache_expiration_time")
 
         self.success_queue = getattr(self.session.conf, "aws_sqs.QueueSuccess")
         self.failure_queue = getattr(self.session.conf, "aws_sqs.QueueFailure")
@@ -104,9 +102,7 @@ class Controller:
             if stage.id == execution_plan.root.id and prefix != "":
                 default_prefix = prefix
 
-            dependencies["output"] = [
-                f"{default_prefix}/{i}.parquet" for i in stage.output
-            ]
+            dependencies["output"] = [f"{default_prefix}/{i}.parquet" for i in stage.output]
             # self.evaluate_execution_stage(execution_stage=stage, prefix=default_prefix)
 
             execution_time = datetime.datetime.now()
@@ -118,9 +114,7 @@ class Controller:
                 self.check_status_of_invokations(request_ids=request_ids)
 
             completed.add(stage.id)
-            self.update_cache_metadata(
-                execution_stage=stage, execution_time=execution_time
-            )
+            self.update_cache_metadata(execution_stage=stage, execution_time=execution_time)
 
     def check_status_of_invokations(self, request_ids: dict[str, Task]):
         cnt = 0
@@ -142,14 +136,10 @@ class Controller:
                         continue
 
                 entries = list(message.create_entry_payload() for message in messages)
-                self.provider.delete_messages_from_queue(
-                    name=self.success_queue, entries=entries
-                )
+                self.provider.delete_messages_from_queue(name=self.success_queue, entries=entries)
 
             if self.verbose:
-                print(
-                    f"\tTASKS COMPLETED: {total_tasks - len(request_ids)}/{total_tasks}"
-                )
+                print(f"\tTASKS COMPLETED: {total_tasks - len(request_ids)}/{total_tasks}")
 
             cnt += 1
 

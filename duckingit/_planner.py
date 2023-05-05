@@ -196,11 +196,7 @@ class Stage:
 
         # Wide operations can only have 1 invokation
         # Narrow operations like SCAN can have multiple invokations
-        invokations = (
-            DuckConfig().session.max_invokations
-            if self.stage_type == Stages.SCAN
-            else 1
-        )
+        invokations = DuckConfig().session.max_invokations if self.stage_type == Stages.SCAN else 1
 
         if isinstance(invokations, str):
             invokations = len(files)
@@ -297,9 +293,7 @@ class Plan:
             nodes
     """
 
-    def __init__(
-        self, query: Query, root: Stage, dag: dict[Stage, t.Set[Stage]]
-    ) -> None:
+    def __init__(self, query: Query, root: Stage, dag: dict[Stage, t.Set[Stage]]) -> None:
         self.query = query
         self.root = root
         self.dag = dag
