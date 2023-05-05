@@ -15,7 +15,7 @@ repos:
         language: system
         types: [ python ]
         require_serial: true
-        files: ^(duckingit/|tests/)
+        files: duckingit/ tests/
       - id: mypy
         name: mypy
         entry: mypy
