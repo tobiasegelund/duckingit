@@ -4,7 +4,7 @@ repos:
       - id: isort
         args: [--combine-as]
         name: isort
-        entry: isort
+        entry: isort --line-length 100
         language: system
         types: [ python ]
         files: ^(duckingit/|tests/)
