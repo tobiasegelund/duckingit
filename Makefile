@@ -1,5 +1,6 @@
 release-image: build-image copy-image
 release-infra: tf-init tf-apply
+setup: install-dev install-precommit
 
 test-unit:
 	pytest tests/unit -s
@@ -9,6 +10,9 @@ test-integration:
 
 lint:
 	flake8 duckingit tests
+
+install-dev:
+	pip install pip -U && pip install -r requirements/dev.txt
 
 install-precommit:
 	pre-commit install
