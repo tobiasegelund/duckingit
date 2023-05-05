@@ -93,7 +93,7 @@ class AWS:
     def _collect_items_from_sqs_message(self, message: dict) -> SQSMessage:
         body = message.get("Body")
         if body is None:
-            raise ValueError(f"Couldn't find any `Body` in the response payload of SQS message")
+            raise ValueError("Couldn't find any `Body` in the response payload of SQS message")
         body = json.loads(body)
 
         request_id = body.get("requestContext").get("requestId")
