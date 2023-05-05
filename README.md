@@ -41,7 +41,7 @@ from duckingit import DuckSession, DuckConfig
 query = "SELECT * FROM READ_PARQUET(['s3://BUCKET_NAME/2023/*'])"
 
 # Following command will print possible configurations
-DuckConfig.show_configurations
+DuckConfig.show_configurations()
 
 # Configuration
 conf = DuckConfig() \

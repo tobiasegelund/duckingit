@@ -2,7 +2,7 @@ import json
 import typing as t
 from dataclasses import dataclass
 
-import boto3
+import boto3  # type: ignore
 
 from duckingit._exceptions import ConfigurationError
 from duckingit._planner import Task
@@ -67,23 +67,17 @@ class AWS:
 
         unwrap = unwrap.get(field, None)
         if unwrap is None:
-            raise ValueError(
-                f"Couldn't unwrap the response - `{field}` isn't in the message"
-            )
+            raise ValueError(f"Couldn't unwrap the response - `{field}` isn't in the message")
 
         return unwrap
 
     def _validate_response(self, response: dict) -> None:
         try:
-            if self._collect_field_from_response(
-                response=response, field="HTTPStatusCode"
-            ) not in [
+            if self._collect_field_from_response(response=response, field="HTTPStatusCode") not in [
                 200,
                 202,
             ]:
-                raise ValueError(
-                    f"{response.get('statusCode')}: {response.get('errorMessage')}"
-                )
+                raise ValueError(f"{response.get('statusCode')}: {response.get('errorMessage')}")
         except KeyError:
             raise ConfigurationError(response)
 
@@ -93,26 +87,27 @@ class AWS:
         self._validate_response(response=response)
 
     def update_sqs_configurations(self, name: str, configs: dict) -> None:
-        response = self.sqs_client.set_queue_attributes(
-            QueueUrl=name, Attributes=configs
-        )
+        response = self.sqs_client.set_queue_attributes(QueueUrl=name, Attributes=configs)
         self._validate_response(response=response)
 
     def _collect_items_from_sqs_message(self, message: dict) -> SQSMessage:
-        body = json.loads(message.get("Body"))
+        body = message.get("Body")
+        if body is None:
+            raise ValueError(f"Couldn't find any `Body` in the response payload of SQS message")
+        body = json.loads(body)
 
         request_id = body.get("requestContext").get("requestId")
+        message_id = message.get("MessageId", "")
+        request_handle = message.get("ReceiptHandle", "")
         response_payload = body.get("responsePayload").get("errorMessage", "")
         return SQSMessage(
             request_id=request_id,
-            message_id=message.get("MessageId"),
-            receipt_handle=message.get("ReceiptHandle"),
+            message_id=message_id,
+            receipt_handle=request_handle,
             response_payload=response_payload,
         )
 
-    def delete_messages_from_queue(
-        self, name: str, entries: list[dict[str, str]]
-    ) -> None:
+    def delete_messages_from_queue(self, name: str, entries: list[dict[str, str]]) -> None:
         delete_request = {
             "QueueUrl": name,
             "Entries": entries,
@@ -120,9 +115,7 @@ class AWS:
         resp = self.sqs_client.delete_message_batch(**delete_request)
         self._validate_response(resp)
 
-    def poll_messages_from_queue(
-        self, name: str, wait_time_seconds: int
-    ) -> list[SQSMessage]:
+    def poll_messages_from_queue(self, name: str, wait_time_seconds: int) -> list[SQSMessage]:
         from duckingit._config import DuckConfig
 
         configs = DuckConfig()

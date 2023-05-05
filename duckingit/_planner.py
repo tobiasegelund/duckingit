@@ -68,7 +68,7 @@ class Task:
 
 
 class Stage:
-    stage_type = ""
+    stage_type: Stages
 
     @classmethod
     def from_ast(
@@ -81,12 +81,10 @@ class Stage:
         ast = ast.copy()
 
         with_ = ast.args.get("with")
-        try:
-            ast.find(exp.With).pop()
-        except AttributeError:
-            pass
 
         if with_:
+            ast.find(exp.With).pop()  # type: ignore
+
             cte_stages = cte_stages.copy()
             for cte in with_.expressions:
                 stage = select_stage_type(cte)
@@ -157,7 +155,7 @@ class Stage:
         return root_stage
 
     def __init__(self):
-        self.id = str = ""
+        self.id: str = ""
         self.name: str = ""
         self.alias: str = ""  # Properbly to be deleted
         self.sql: str = ""
@@ -175,7 +173,7 @@ class Stage:
         return len(self.tasks)
 
     @property
-    def name_or_sql(self) -> None:
+    def name_or_sql(self) -> str:
         if self.name == "":
             return self.sql
         return self.name
@@ -313,10 +311,13 @@ class Plan:
     def from_query(cls, query: Query):
         root = Stage.from_ast(ast=query.ast)
 
-        dag = {}
+        dag: dict[Stage, t.Set[Stage]] = {}
         nodes = {root}
         while nodes:
             node = nodes.pop()
+
+            if node is None:
+                raise ValueError
 
             dag[node] = set()
             for dep in node.dependencies:

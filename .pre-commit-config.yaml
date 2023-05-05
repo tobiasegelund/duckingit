@@ -18,7 +18,7 @@ repos:
         files: ^(duckingit/|tests/)
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: mypy --check-untyped-defs
         language: system
         types: [ python ]
         files: ^(duckingit/|tests/)

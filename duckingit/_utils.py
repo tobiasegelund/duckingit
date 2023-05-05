@@ -66,7 +66,7 @@ def create_unique_name(prefix: str = "__duckingit") -> str:
     return f"{prefix}_{uuid.uuid1().hex[:6]}"
 
 
-def ensure_iterable(value: T | t.Iterable[T]) -> list[T]:
+def ensure_iterable(value: T | t.Iterable[T]) -> Iterable[T]:
     """Ensure to return an iterable
 
     Args:

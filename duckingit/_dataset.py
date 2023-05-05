@@ -48,7 +48,7 @@ class Modes(Enum):
             self.WRITE: write,
         }
 
-        return _funcs[self]
+        return _funcs[self]  # type: ignore
 
 
 # class Formats(Enum):

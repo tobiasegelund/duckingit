@@ -16,7 +16,6 @@ CACHE_PREFIX = ".cache/duckingit"
 class ServiceConfig:
     def update(self) -> None:
         """Update the state of the ConfigSingleton"""
-        pass
 
 
 @dataclass
@@ -247,7 +246,6 @@ class DuckConfig:
         return attr
 
     @classmethod
-    @property
     def show_configurations(cls):
         repr = "\n".join(
             [
@@ -275,7 +273,7 @@ class DuckConfig:
     def duckdb(self):
         return self.duckdb_config
 
-    services_to_be_updated = {}
+    services_to_be_updated: dict[str, t.Any] = {}
 
     def set(self, name: str, value: t.Any):
         keys = name.split(".")

@@ -14,7 +14,7 @@ class Providers(Enum):
         providers = {self.AWS: AWS}
 
         try:
-            return providers[self]()
+            return providers[self]()  # type: ignore
 
         except KeyError:
             raise NotImplementedError("Currently, it's only implemented for AWS Lambda")
@@ -29,7 +29,7 @@ class Providers(Enum):
     @property
     def fs(self) -> str:
         _fs = {self.AWS: "s3", self.GCP: "gcp"}
-        return _fs[self]
+        return _fs[self]  # type: ignore
 
     @property
     def credentials(self) -> str:
@@ -47,4 +47,4 @@ class Providers(Enum):
 
         _credentials = {self.AWS: s3, self.GCP: gcp}
 
-        return _credentials[self]
+        return _credentials[self]  # type: ignore
