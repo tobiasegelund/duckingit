@@ -23,3 +23,10 @@ repos:
         types: [ python ]
         files: ^(duckingit/|tests/)
         require_serial: true
+      - id: autoflake
+        name: autoflake
+        entry: autoflake -i -r
+        language: system
+        types: [ python ]
+        require_serial: true
+        files: ^(duckingit/|tests/)

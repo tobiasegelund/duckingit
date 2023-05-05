@@ -1,19 +1,17 @@
 import pytest
 
-from duckingit.integrations.aws import AWS, SQSMessage
-from duckingit._session import DuckSession
+from duckingit._config import DuckConfig
 from duckingit._controller import Controller
 from duckingit._dataset import Dataset
-from duckingit._config import DuckConfig
-from duckingit._planner import Plan, Task
 from duckingit._parser import Query
+from duckingit._planner import Plan, Task
+from duckingit._session import DuckSession
 from duckingit._utils import create_hash_string
+from duckingit.integrations.aws import AWS, SQSMessage
 
 
 class _MockAWS(AWS):
-    def poll_messages_from_queue(
-        self, name: str, wait_time_seconds: int
-    ) -> list[SQSMessage]:
+    def poll_messages_from_queue(self, name: str, wait_time_seconds: int) -> list[SQSMessage]:
         return [
             SQSMessage(request_id="123", message_id="ABC", receipt_handle="ABC"),
             SQSMessage(request_id="345", message_id="ABC", receipt_handle="ABC"),

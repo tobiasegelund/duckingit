@@ -1,10 +1,6 @@
 import pytest
 
-from duckingit._utils import (
-    flatten_list,
-    ensure_iterable,
-    split_list_in_chunks,
-)
+from duckingit._utils import ensure_iterable, flatten_list, split_list_in_chunks
 
 
 def test_flatten_list():
