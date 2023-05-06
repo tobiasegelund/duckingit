@@ -168,7 +168,7 @@ class Stage:
                     stage.add_dependency(subquery_stage)
 
                 else:
-                    if (table_name := join.this) in cte_stages:
+                    if (table_name := join.sql()) in cte_stages:
                         cte = cte_stages[table_name]
                         stage.add_dependency(cte)
 
@@ -184,8 +184,8 @@ class Stage:
         self.sql: str = ""
         self.from_: str = ""
 
-        self.dependents = []
-        self.dependencies = []
+        self.dependents = set()
+        self.dependencies = set()
 
         self.tasks: t.Set[Task] = set()
 
@@ -230,8 +230,8 @@ class Stage:
             self.tasks.add(Task.create(query=query, files=chunk))
 
     def add_dependency(self, dependency: "Stage") -> None:
-        self.dependencies.append(dependency)
-        dependency.dependents.append(self)
+        self.dependencies.add(dependency)
+        dependency.dependents.add(self)
 
     def copy(self):
         """Returns a deep copy of the object itself"""
