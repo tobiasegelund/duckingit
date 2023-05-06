@@ -74,8 +74,8 @@ class Stage:
     def from_ast(
         cls,
         ast: exp.Expression,
-        previous_stage: "Stage" | None = None,
-        root_stage: "Stage" | None = None,
+        previous_stage: t.Optional["Stage"] = None,
+        root_stage: t.Optional["Stage"] = None,
         cte_stages: dict = {},
     ):
         ast = ast.copy()
@@ -320,8 +320,6 @@ class Plan:
         nodes = {root}
         while nodes:
             node = nodes.pop()
-
-            assert node
 
             dag[node] = set()
             for dep in node.dependencies:
