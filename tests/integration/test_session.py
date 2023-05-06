@@ -51,13 +51,9 @@ def test_DuckSession_save_as_temp_table(query, expected, session):
     ],
 )
 def test_DuckSession_save_mode_overwrite(query, expected, session):
-    session.sql(query=query).write.mode("overwrite").save(
-        "s3://s3-duckdb-tobiasegelund/test"
-    )
+    session.sql(query=query).write.mode("overwrite").save("s3://s3-duckdb-tobiasegelund/test")
 
-    got = session.conn.sql(
-        "SELECT * FROM READ_PARQUET(['s3://s3-duckdb-tobiasegelund/test/*'])"
-    )
+    got = session.conn.sql("SELECT * FROM READ_PARQUET(['s3://s3-duckdb-tobiasegelund/test/*'])")
 
     assert len(got.fetchall()) == expected
 
