@@ -130,7 +130,7 @@ class Stage:
                     cte_stages=cte_stages,
                 )
 
-            elif isinstance(expression, exp.Union):
+            if isinstance(expression, exp.Union):
                 raise NotImplementedError("Cannot handle Unions yet")
 
             else:
@@ -149,10 +149,31 @@ class Stage:
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
 
-                if root_stage is None:
-                    root_stage = stage
         else:
-            raise NotImplementedError()
+            stage = Scan()
+
+        joins = ast.args.get("joins")
+        if joins:
+            stage.stage_type = Stages.JOIN
+
+            for join in joins:
+                join = join.this
+                if isinstance(join, exp.Subquery):
+                    subquery_stage = Stage.from_ast(
+                        join.this,  # type: ignore
+                        previous_stage=previous_stage,
+                        root_stage=root_stage,
+                        cte_stages=cte_stages,
+                    )
+                    stage.add_dependency(subquery_stage)
+
+                else:
+                    if (table_name := join.this) in cte_stages:
+                        cte = cte_stages[table_name]
+                        stage.add_dependency(cte)
+
+        if root_stage is None:
+            root_stage = stage
 
         return root_stage
 
@@ -208,7 +229,7 @@ class Stage:
         for chunk in chunks_of_files:
             self.tasks.add(Task.create(query=query, files=chunk))
 
-    def add_dependency(self, dependency: "Stage"):
+    def add_dependency(self, dependency: "Stage") -> None:
         self.dependencies.append(dependency)
         dependency.dependents.append(self)
 
@@ -271,10 +292,6 @@ def select_stage_type(ast: exp.Expression):
     sort = ast.args.get("order")
     if sort:
         return Sort()
-
-    join = ast.args.get("join")
-    if join:
-        raise NotImplementedError("Joins are not implemented yet")
 
     return Scan()
 
