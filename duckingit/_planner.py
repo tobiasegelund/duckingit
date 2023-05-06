@@ -74,8 +74,8 @@ class Stage:
     def from_ast(
         cls,
         ast: exp.Expression,
-        previous_stage: None = None,
-        root_stage: None = None,
+        previous_stage: "Stage" | None = None,
+        root_stage: "Stage" | None = None,
         cte_stages: dict = {},
     ):
         ast = ast.copy()
@@ -120,6 +120,8 @@ class Stage:
                     previous_stage.add_dependency(stage)
                 if root_stage is None:
                     root_stage = stage
+
+                assert expression.this
 
                 stage = Stage.from_ast(
                     expression.this,
@@ -280,15 +282,18 @@ def select_stage_type(ast: exp.Expression):
 class Plan:
     """Class to create an execution plan across nodes
 
-    The execution plan consists of a execution steps based on queries. Basically, the
-    class scan the bucket based on the query, divides the workload on the number of
-    invokations. Afterwards, its the Controller's job to execute the plan.
+    A execution consists of stages, and each stage consists of tasks. A stage is an actual
+    operation, such as Scan, Sort, Join, where a task is the actual DuckDB SQL query to run on
+    a serverless function
 
     Attributes:
+        query, Query: The main query parsed as in the Query class
+        root, Stage: The root operation, ie. last operation, in the DAG
+        dag, dict[Stage, Set(Stage)]: A DAG that represents the execution plan in nodes
+        leaves, list[Stage]: The leaves of stages in the DAG
 
     Methods:
-        from_query: Creates an execution plan that divides the workload between
-            nodes
+        from_query: Creates an execution plan from a query parsed in the Query class
     """
 
     def __init__(self, query: Query, root: Stage, dag: dict[Stage, t.Set[Stage]]) -> None:
@@ -316,8 +321,7 @@ class Plan:
         while nodes:
             node = nodes.pop()
 
-            if node is None:
-                raise ValueError
+            assert node
 
             dag[node] = set()
             for dep in node.dependencies:
