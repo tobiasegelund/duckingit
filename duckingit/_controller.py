@@ -78,9 +78,10 @@ class Controller:
 
     def execute_plan(self, execution_plan: Plan, prefix: str, default_prefix: str):
         """Executes the execution plan"""
-        dependencies: dict[str, list[str]] = {}
         completed = set()
         queue = set(execution_plan.leaves)
+        # TODO: Can this be moved in the loop, so old dependencies are overwritten?
+        dependencies: dict[str, list[str]] = {}
 
         while queue:
             stage = queue.pop()
@@ -91,19 +92,14 @@ class Controller:
                 if deb.id not in completed:
                     queue.add(deb)
 
-            # CREATE TASKS HERE BASED ON CONTEXT!!
             stage.create_tasks(dependencies=dependencies)
-            # TODO: Handle multi dependencies
-            # context[stage.id] = list(
-            #     prefix + "/" + i + ".parquet" for i in stage.output
-            # )
             if self.verbose:
                 print(f"RUNNING STAGE: [{stage}]")
 
             if stage.id == execution_plan.root.id and prefix != "":
                 default_prefix = prefix
 
-            dependencies["output"] = [f"{default_prefix}/{i}.parquet" for i in stage.output]
+            dependencies[stage.id] = [f"{default_prefix}/{i}.parquet" for i in stage.output]
             # self.evaluate_execution_stage(execution_stage=stage, prefix=default_prefix)
 
             execution_time = datetime.datetime.now()

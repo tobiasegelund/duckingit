@@ -81,7 +81,6 @@ class Stage:
         ast = ast.copy()
 
         with_ = ast.args.get("with")
-
         if with_:
             ast.find(exp.With).pop()  # type: ignore
 
@@ -92,7 +91,7 @@ class Stage:
                 stage.name = cte.alias
                 stage.alias = cte.alias
                 stage.from_ = cte.this.sql()
-                stage.sql = cte.sql()
+                stage.ast = cte.copy()
 
                 stage = Stage.from_ast(
                     cte.this,
@@ -114,7 +113,7 @@ class Stage:
                 stage.id = create_hash_string(ast.sql(), digits=6)
                 stage.from_ = expression.sql()
                 stage.alias = expression.alias
-                stage.sql = ast.sql()
+                stage.ast = ast.copy()  # type: ignore
 
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
@@ -140,7 +139,7 @@ class Stage:
                 stage.id = create_hash_string(ast.sql(), digits=6)
                 stage.alias = expression.alias
                 stage.from_ = table_name
-                stage.sql = ast.sql()
+                stage.ast = ast.copy()  # type: ignore
 
                 if table_name in cte_stages:
                     cte = cte_stages[table_name]
@@ -168,7 +167,7 @@ class Stage:
                     stage.add_dependency(subquery_stage)
 
                 else:
-                    if (table_name := join.sql()) in cte_stages:
+                    if (table_name := join.this.sql()) in cte_stages:
                         cte = cte_stages[table_name]
                         stage.add_dependency(cte)
 
@@ -181,7 +180,7 @@ class Stage:
         self.id: str = ""
         self.name: str = ""
         self.alias: str = ""  # Properbly to be deleted
-        self.sql: str = ""
+        self.ast: exp.Expression | None = None
         self.from_: str = ""
 
         self.dependents = set()
@@ -196,6 +195,11 @@ class Stage:
         return len(self.tasks)
 
     @property
+    def sql(self) -> str:
+        if self.ast is None:
+            return ""
+        return self.ast.sql()
+
     def name_or_sql(self) -> str:
         if self.name == "":
             return self.sql
@@ -234,7 +238,7 @@ class Stage:
         dependency.dependents.add(self)
 
     def copy(self):
-        """Returns a deep copy of the object itself"""
+        """Returns a deep copy of itself"""
         return copy.deepcopy(self)
 
 
