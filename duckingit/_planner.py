@@ -86,16 +86,9 @@ class Stage:
 
             cte_stages = cte_stages.copy()
             for cte in with_.expressions:
-                stage = select_stage_type(cte)
-                stage.id = create_hash_string(cte.sql(), digits=6)
-                stage.name = cte.alias
-                stage.alias = cte.alias
-                stage.from_ = cte.this.sql()
-                stage.ast = cte.copy()
-
                 stage = Stage.from_ast(
                     cte.this,
-                    previous_stage=stage,
+                    previous_stage=previous_stage,
                     root_stage=root_stage,
                     cte_stages=cte_stages,
                 )
@@ -145,9 +138,6 @@ class Stage:
                     cte = cte_stages[table_name]
                     stage.add_dependency(cte)
 
-                if previous_stage is not None:
-                    previous_stage.add_dependency(stage)
-
         else:
             stage = Scan()
 
@@ -169,7 +159,12 @@ class Stage:
                 else:
                     if (table_name := join.this.sql()) in cte_stages:
                         cte = cte_stages[table_name]
+
+                        # id_ = cte.id
                         stage.add_dependency(cte)
+
+        if previous_stage is not None:
+            previous_stage.add_dependency(stage)
 
         if root_stage is None:
             root_stage = stage
@@ -182,6 +177,7 @@ class Stage:
         self.alias: str = ""  # Properbly to be deleted
         self.ast: exp.Expression | None = None
         self.from_: str = ""
+        self._sql: str = ""
 
         self.dependents = set()
         self.dependencies = set()
@@ -200,10 +196,10 @@ class Stage:
             return ""
         return self.ast.sql()
 
-    def name_or_sql(self) -> str:
-        if self.name == "":
-            return self.sql
-        return self.name
+    def alias_or_id(self) -> str:
+        if self.alias == "":
+            return self.id
+        return self.alias
 
     @property
     def output(self) -> list[str]:
