@@ -87,8 +87,6 @@ class Controller:
             stage = queue.pop()
 
             for deb in stage.dependents:
-                if deb.stage_type == Stages.CTE:
-                    continue
                 if deb.id not in completed:
                     queue.add(deb)
 

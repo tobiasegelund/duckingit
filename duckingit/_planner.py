@@ -11,7 +11,6 @@ from duckingit._utils import create_hash_string, split_list_in_chunks
 
 class Stages(Enum):
     AGGREGATE = "AGGREGATE"
-    CTE = "CTE"
     JOIN = "JOIN"
     SCAN = "SCAN"
     UNION = "UNION"
@@ -245,13 +244,6 @@ class Scan(Stage):
         super().__init__()
 
 
-class CTE(Stage):
-    stage_type = Stages.CTE
-
-    def __init__(self):
-        super().__init__()
-
-
 class Aggregate(Stage):
     stage_type = Stages.AGGREGATE
 
@@ -281,9 +273,6 @@ class Union(Stage):
 
 
 def select_stage_type(ast: exp.Expression):
-    if isinstance(ast, exp.CTE):
-        return CTE()
-
     group = ast.args.get("group")
     agg = list(i for i in ast.expressions if isinstance(i, exp.AggFunc))
     if group or agg:
