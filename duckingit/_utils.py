@@ -54,12 +54,14 @@ def split_list_in_chunks(_list: list[str], number_of_invokations: int) -> list[l
     ]
 
 
-def create_hash_string(string: str, algorithm: str = "md5", digits: int | None = None) -> str:
+def create_hash_string(
+    string: str, algorithm: str = "md5", digits: int | None = None, first_char: str = ""
+) -> str:
     algo = getattr(hashlib, algorithm)
     val = algo(string.encode(), usedforsecurity=False).hexdigest()
     if digits is None:
-        return val
-    return val[:digits]
+        return first_char + val
+    return first_char + val[:digits]
 
 
 def create_unique_name(prefix: str = "__duckingit") -> str:

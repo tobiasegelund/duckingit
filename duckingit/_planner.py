@@ -3,6 +3,7 @@ import typing as t
 from dataclasses import dataclass
 from enum import Enum
 
+import sqlglot
 import sqlglot.expressions as exp
 
 from duckingit._parser import Query
@@ -47,9 +48,9 @@ class Task:
             read_csv = "READ_CSV_AUTO"
 
             if table[: len(read_json)] == read_json:
-                subquery = subquery.replace(table, f"READ_JSON_AUTO({files}) {alias}")
+                subquery = subquery.replace(table, f"{read_json}({files}) {alias}")
             elif table[: len(read_csv)] == read_csv:
-                subquery = subquery.replace(table, f"READ_CSV_AUTO({files}) {alias}")
+                subquery = subquery.replace(table, f"{read_csv}({files}) {alias}")
             else:
                 subquery = subquery.replace(table, f"READ_PARQUET({files}) {alias}")
 
@@ -91,6 +92,7 @@ class Stage:
                     root_stage=root_stage,
                     cte_stages=cte_stages,
                 )
+                stage.alias = cte.alias
 
                 cte_stages[cte.alias] = stage
 
@@ -102,7 +104,8 @@ class Stage:
 
             if isinstance(expression, exp.Subquery):
                 stage = select_stage_type(ast)
-                stage.id = create_hash_string(ast.sql(), digits=6)
+                # id must begin with a character
+                stage.id = create_hash_string(ast.sql(), digits=6, first_char="a")
                 stage.from_ = expression.sql()
                 stage.alias = expression.alias
                 stage.ast = ast.copy()  # type: ignore
@@ -128,7 +131,7 @@ class Stage:
                 table_name = expression.sql()
 
                 stage = select_stage_type(ast)
-                stage.id = create_hash_string(ast.sql(), digits=6)
+                stage.id = create_hash_string(ast.sql(), digits=6, first_char="a")
                 stage.alias = expression.alias
                 stage.from_ = table_name
                 stage.ast = ast.copy()  # type: ignore
@@ -146,6 +149,8 @@ class Stage:
 
             for join in joins:
                 join = join.this
+                alias = join.alias
+
                 if isinstance(join, exp.Subquery):
                     subquery_stage = Stage.from_ast(
                         join.this,  # type: ignore
@@ -153,13 +158,13 @@ class Stage:
                         root_stage=root_stage,
                         cte_stages=cte_stages,
                     )
+                    stage._replace_node(child=join, id=subquery_stage.id, alias=alias)
                     stage.add_dependency(subquery_stage)
 
                 else:
                     if (table_name := join.this.sql()) in cte_stages:
                         cte = cte_stages[table_name]
-
-                        # id_ = cte.id
+                        stage._replace_node(child=join, id=cte.id, alias=alias)
                         stage.add_dependency(cte)
 
         if previous_stage is not None:
@@ -188,6 +193,14 @@ class Stage:
 
     def __len__(self) -> int:
         return len(self.tasks)
+
+    def _replace_node(self, child: exp.Expression, id: str, alias: str = "") -> None:
+        if self.ast is None:
+            raise ValueError
+
+        for node, *_ in self.ast.walk():
+            if node == child:
+                node.replace(sqlglot.parse_one(f"{id} {alias}"))
 
     @property
     def sql(self) -> str:
