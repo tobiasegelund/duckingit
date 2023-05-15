@@ -123,6 +123,7 @@ class Stage:
                     root_stage=root_stage,
                     cte_stages=cte_stages,
                 )
+                stage._replace_node(child=expression, id=stage.id, alias=expression.alias)
 
             if isinstance(expression, exp.Union):
                 raise NotImplementedError("Cannot handle Unions yet")
@@ -138,6 +139,7 @@ class Stage:
 
                 if table_name in cte_stages:
                     cte = cte_stages[table_name]
+                    stage._replace_node(child=expression, id=cte.id, alias=expression.alias)
                     stage.add_dependency(cte)
 
         else:
@@ -329,13 +331,17 @@ class Plan:
 
     @property
     def leaves(self) -> list[Stage]:
-        return [node for node, deps in self.dag.items() if not deps]
+        leaves = []
+        for node in self.dag:
+            if not self.dag[node]:
+                leaves.append(node)
+        return leaves
 
     @classmethod
     def from_query(cls, query: Query):
         root = Stage.from_ast(ast=query.ast)
 
-        dag: dict[Stage, t.Set[Stage]] = {}
+        dag: dict[Stage, t.Set[Stage]] = {root: set()}
         nodes = {root}
         while nodes:
             node = nodes.pop()
