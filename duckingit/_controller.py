@@ -90,6 +90,10 @@ class Controller:
                 if deb.id not in completed:
                     queue.add(deb)
 
+            # for _id in list(dependencies):
+            #     if _id not in stage.dependencies:
+            #         _ = dependencies.pop(_id)
+
             stage.create_tasks(dependencies=dependencies)
             if self.verbose:
                 print(f"RUNNING STAGE: [{stage}]")

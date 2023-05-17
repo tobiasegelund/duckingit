@@ -27,7 +27,7 @@ class Task:
     subquery_hashed: str
 
     @classmethod
-    def create(cls, query: Query, files: list[str]):
+    def create(cls, query: Query, files: list[str] | None = None):
         """Creates a task to execute on a serverless function
 
         Args:
@@ -39,20 +39,22 @@ class Task:
 
         """
         subquery = query.copy().sql
-        for table in query.from_:
-            table = table.expressions[0]
-            alias = table.alias
-            table = str(table).replace("ARRAY", "LIST_VALUE")  # Current sqlglot bug
 
-            read_json = "READ_JSON_AUTO"
-            read_csv = "READ_CSV_AUTO"
+        if files:
+            for table in query.from_:
+                table = table.expressions[0]
+                alias = table.alias
+                table = str(table).replace("ARRAY", "LIST_VALUE")  # Current sqlglot bug
 
-            if table[: len(read_json)] == read_json:
-                subquery = subquery.replace(table, f"{read_json}({files}) {alias}")
-            elif table[: len(read_csv)] == read_csv:
-                subquery = subquery.replace(table, f"{read_csv}({files}) {alias}")
-            else:
-                subquery = subquery.replace(table, f"READ_PARQUET({files}) {alias}")
+                read_json = "READ_JSON_AUTO"
+                read_csv = "READ_CSV_AUTO"
+
+                if table[: len(read_json)] == read_json:
+                    subquery = subquery.replace(table, f"{read_json}({files}) {alias}")
+                elif table[: len(read_csv)] == read_csv:
+                    subquery = subquery.replace(table, f"{read_csv}({files}) {alias}")
+                else:
+                    subquery = subquery.replace(table, f"READ_PARQUET({files}) {alias}")
 
         return cls(subquery=subquery, subquery_hashed=create_hash_string(subquery))
 
@@ -105,7 +107,7 @@ class Stage:
             if isinstance(expression, exp.Subquery):
                 stage = select_stage_type(ast)
                 # id must begin with a character
-                stage.id = create_hash_string(ast.sql(), digits=6, first_char="a")
+                stage.id = create_hash_string(ast.sql(), digits=6, first_char="$")
                 stage.from_ = expression.sql()
                 stage.alias = expression.alias
                 stage.ast = ast.copy()  # type: ignore
@@ -132,7 +134,7 @@ class Stage:
                 table_name = expression.sql()
 
                 stage = select_stage_type(ast)
-                stage.id = create_hash_string(ast.sql(), digits=6, first_char="a")
+                stage.id = create_hash_string(ast.sql(), digits=6, first_char="$")
                 stage.alias = expression.alias
                 stage.from_ = table_name
                 stage.ast = ast.copy()  # type: ignore
@@ -223,26 +225,29 @@ class Stage:
         # TODO: Focus on Stage ID in dependencies
         from duckingit._config import DuckConfig
 
-        query = Query.parse(self.sql)
-        if dependencies:
-            for _id, output in dependencies.items():
-                query.sql.replace(_id, f"(SELECT * FROM READ_PARQUET({output}))")
-        else:
-            files = query.list_of_prefixes
-
         # Wide operations can only have 1 invokation
         # Narrow operations like SCAN can have multiple invokations
         invokations = DuckConfig().session.max_invokations if self.stage_type == Stages.SCAN else 1
 
-        if isinstance(invokations, str):
-            invokations = len(files)
+        query = Query.parse(self.sql)
+        if dependencies:
+            for _id, output in dependencies.items():
+                query.replace(_id, f"(SELECT * FROM READ_PARQUET({output}))")
 
-        # TODO: Heuristic to divide the workload between the invokations based on size
-        # of prefixes / number of files etc. Or based on some deeper analysis of the query?
-        chunks_of_files = split_list_in_chunks(files, number_of_invokations=invokations)
+            self.tasks.add(Task.create(query=query))
 
-        for chunk in chunks_of_files:
-            self.tasks.add(Task.create(query=query, files=chunk))
+        else:
+            files = query.list_of_prefixes
+
+            if isinstance(invokations, str):
+                invokations = len(files)
+
+            # TODO: Heuristic to divide the workload between the invokations based on size
+            # of prefixes / number of files etc. Or based on some deeper analysis of the query?
+            chunks_of_files = split_list_in_chunks(files, number_of_invokations=invokations)
+
+            for chunk in chunks_of_files:
+                self.tasks.add(Task.create(query=query, files=chunk))
 
     def add_dependency(self, dependency: "Stage") -> None:
         self.dependencies.add(dependency)

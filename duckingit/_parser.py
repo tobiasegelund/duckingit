@@ -31,6 +31,9 @@ class Query:
             ast=expression,
         )
 
+    def replace(self, old: str, new: str) -> None:
+        self.sql = self.sql.replace(old, new)
+
     @property
     def list_of_prefixes(self) -> list[str]:
         if self._list_of_prefixes is None:
