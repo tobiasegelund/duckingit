@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from duckingit._exceptions import ConfigurationError, WrongInvokationType
 from duckingit._utils import cast_mapping_to_string_with_newlines
-from duckingit.integrations import Providers
+from duckingit.providers import Providers
 
 CACHE_PREFIX = ".cache/duckingit"
 

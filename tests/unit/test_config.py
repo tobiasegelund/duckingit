@@ -2,7 +2,7 @@ import pytest
 
 from duckingit._config import DuckConfig
 from duckingit._exceptions import ConfigurationError
-from duckingit.integrations import Providers
+from duckingit.providers import Providers
 
 
 def test_DuckConfig_set_multiple():

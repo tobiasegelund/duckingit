@@ -4,7 +4,7 @@ import typing as t
 from duckingit._exceptions import FailedLambdaFunctions
 from duckingit._planner import Plan, Stage, Stages, Task
 from duckingit._utils import scan_source_for_files
-from duckingit.integrations import Providers
+from duckingit.providers import Providers
 
 if t.TYPE_CHECKING:
     from duckingit._session import DuckSession

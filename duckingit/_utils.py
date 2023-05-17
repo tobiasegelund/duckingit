@@ -97,7 +97,7 @@ def ensure_iterable(value: T | t.Iterable[T]) -> Iterable[T]:
 
 def create_conn_with_httpfs_loaded() -> duckdb.DuckDBPyConnection:
     """Returns a in memory DuckDB connection with httpfs loaded"""
-    from duckingit.integrations import Providers
+    from duckingit.providers import Providers
 
     conn = duckdb.connect(":memory:")
     conn.execute("LOAD httpfs;")

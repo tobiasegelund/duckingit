@@ -225,7 +225,8 @@ class Stage:
 
         query = Query.parse(self.sql)
         if dependencies:
-            files = dependencies["output"]
+            for _id, output in dependencies.items():
+                query.sql.replace(_id, f"(SELECT * FROM READ_PARQUET({output}))")
         else:
             files = query.list_of_prefixes
 

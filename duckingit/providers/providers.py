@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from duckingit.integrations.aws import AWS
+from duckingit.providers.aws import AWS
 
 
 class Providers(Enum):

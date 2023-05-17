@@ -6,7 +6,7 @@ from duckingit._config import DuckConfig
 from duckingit._dataset import Dataset
 from duckingit._parser import Query
 from duckingit._planner import Plan
-from duckingit.integrations import Providers
+from duckingit.providers import Providers
 
 
 class DuckSession:
