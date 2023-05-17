@@ -108,7 +108,6 @@ class Stage:
                 stage = select_stage_type(ast)
                 # id must begin with a character
                 stage.id = create_hash_string(ast.sql(), digits=6, first_char="$")
-                stage.from_ = expression.sql()
                 stage.alias = expression.alias
                 stage.ast = ast.copy()  # type: ignore
 
@@ -131,12 +130,11 @@ class Stage:
                 raise NotImplementedError("Cannot handle Unions yet")
 
             else:
-                table_name = expression.sql()
+                table_name = str(expression.this)
 
                 stage = select_stage_type(ast)
                 stage.id = create_hash_string(ast.sql(), digits=6, first_char="$")
                 stage.alias = expression.alias
-                stage.from_ = table_name
                 stage.ast = ast.copy()  # type: ignore
 
                 if table_name in cte_stages:
@@ -184,7 +182,6 @@ class Stage:
         self.name: str = ""
         self.alias: str = ""  # Properbly to be deleted
         self.ast: exp.Expression | None = None
-        self.from_: str = ""
         self._sql: str = ""
 
         self.dependents = set()
