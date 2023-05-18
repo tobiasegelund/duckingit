@@ -51,12 +51,6 @@ class Modes(Enum):
         return _funcs[self]  # type: ignore
 
 
-# class Formats(Enum):
-#     DELTA = "delta"
-#     ICEBERG = "iceberg"
-#     HUDI = "hudi"
-
-
 class DatasetWriter:
     _mode: Modes = Modes.WRITE
 
