@@ -77,7 +77,6 @@ class Stage:
         cls,
         ast: exp.Expression,
         previous_stage: t.Optional["Stage"] = None,
-        root_stage: t.Optional["Stage"] = None,
         cte_stages: dict = {},
     ):
         ast = ast.copy()
@@ -91,7 +90,6 @@ class Stage:
                 stage = Stage.from_ast(
                     cte.this,
                     previous_stage=previous_stage,
-                    root_stage=root_stage,
                     cte_stages=cte_stages,
                 )
                 stage.alias = cte.alias
@@ -103,6 +101,7 @@ class Stage:
             if len(from_.expressions) > 1:
                 raise NotImplementedError("Multi FROM isn't supported")
             expression = from_.expressions[0]
+            assert expression.this
 
             if isinstance(expression, exp.Subquery):
                 stage = select_stage_type(ast)
@@ -113,18 +112,15 @@ class Stage:
 
                 if previous_stage is not None:
                     previous_stage.add_dependency(stage)
-                if root_stage is None:
-                    root_stage = stage
 
-                assert expression.this
-
-                stage = Stage.from_ast(
+                sub_stage = Stage.from_ast(
                     expression.this,
                     previous_stage=stage,
-                    root_stage=root_stage,
                     cte_stages=cte_stages,
                 )
-                stage.replace_child_with_id(child=expression, id=stage.id, alias=expression.alias)
+                stage.replace_child_with_id(
+                    child=expression, id=sub_stage.id, alias=expression.alias
+                )
 
             elif isinstance(expression, exp.Union):
                 raise NotImplementedError("Cannot handle Unions yet")
@@ -157,7 +153,6 @@ class Stage:
                     subquery_stage = Stage.from_ast(
                         join.this,  # type: ignore
                         previous_stage=previous_stage,
-                        root_stage=root_stage,
                         cte_stages=cte_stages,
                     )
                     stage.replace_child_with_id(child=join, id=subquery_stage.id, alias=alias)
@@ -172,10 +167,7 @@ class Stage:
         if previous_stage is not None:
             previous_stage.add_dependency(stage)
 
-        if root_stage is None:
-            root_stage = stage
-
-        return root_stage
+        return stage
 
     def __init__(self):
         self.id: str = ""
