@@ -124,7 +124,7 @@ class Stage:
                     root_stage=root_stage,
                     cte_stages=cte_stages,
                 )
-                stage._replace_node(child=expression, id=stage.id, alias=expression.alias)
+                stage.replace_child_with_id(child=expression, id=stage.id, alias=expression.alias)
 
             if isinstance(expression, exp.Union):
                 raise NotImplementedError("Cannot handle Unions yet")
@@ -139,7 +139,7 @@ class Stage:
 
                 if table_name in cte_stages:
                     cte = cte_stages[table_name]
-                    stage._replace_node(child=expression, id=cte.id, alias=expression.alias)
+                    stage.replace_child_with_id(child=expression, id=cte.id, alias=expression.alias)
                     stage.add_dependency(cte)
 
         else:
@@ -160,13 +160,13 @@ class Stage:
                         root_stage=root_stage,
                         cte_stages=cte_stages,
                     )
-                    stage._replace_node(child=join, id=subquery_stage.id, alias=alias)
+                    stage.replace_child_with_id(child=join, id=subquery_stage.id, alias=alias)
                     stage.add_dependency(subquery_stage)
 
                 else:
                     if (table_name := join.this.sql()) in cte_stages:
                         cte = cte_stages[table_name]
-                        stage._replace_node(child=join, id=cte.id, alias=alias)
+                        stage.replace_child_with_id(child=join, id=cte.id, alias=alias)
                         stage.add_dependency(cte)
 
         if previous_stage is not None:
@@ -184,8 +184,8 @@ class Stage:
         self.ast: exp.Expression | None = None
         self._sql: str = ""
 
-        self.dependents = set()
-        self.dependencies = set()
+        self.dependents: t.Set["Stage"] = set()
+        self.dependencies: t.Set["Stage"] = set()
 
         self.tasks: t.Set[Task] = set()
 
@@ -195,7 +195,7 @@ class Stage:
     def __len__(self) -> int:
         return len(self.tasks)
 
-    def _replace_node(self, child: exp.Expression, id: str, alias: str = "") -> None:
+    def replace_child_with_id(self, child: exp.Expression, id: str, alias: str = "") -> None:
         if self.ast is None:
             raise ValueError
 
@@ -304,7 +304,7 @@ def select_stage_type(ast: exp.Expression):
 
 
 class Plan:
-    """Class to create an execution plan across nodes
+    """The execution plan
 
     A execution consists of stages, and each stage consists of tasks. A stage is an actual
     operation, such as Scan, Sort, Join, where a task is the actual DuckDB SQL query to run on
