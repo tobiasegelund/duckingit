@@ -1,4 +1,5 @@
 import os
+import typing as t
 from enum import Enum
 
 from duckingit.providers.aws import AWS
@@ -33,11 +34,22 @@ class Providers(Enum):
 
     @property
     def credentials(self) -> str:
-        s3 = f"""
-            SET s3_region='{os.getenv("AWS_DEFAULT_REGION", None)}';
-            SET s3_access_key_id='{os.getenv("AWS_ACCESS_KEY_ID", None)}';
-            SET s3_secret_access_key='{os.getenv("AWS_SECRET_ACCESS_KEY", None)}';
-        """
+        from duckingit import DuckConfig
+
+        aws_settings: dict[str, t.Optional[str]] = {}
+        for key in ["aws_region", "aws_access_key_id", "aws_secret_access_key"]:
+            val = getattr(DuckConfig().aws_config, key)
+            if val == "":
+                val = os.getenv(key.upper(), None)
+            aws_settings[key] = val
+
+        s3 = """
+            SET s3_region='{aws_region}';
+            SET s3_access_key_id='{aws_access_key_id}';
+            SET s3_secret_access_key='{aws_secret_access_key}';
+        """.format(
+            **aws_settings
+        )
 
         gcp = f"""
             SET s3_endpoint='{os.getenv("S3_ENDPOINT", None)}';

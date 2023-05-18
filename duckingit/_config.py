@@ -1,7 +1,3 @@
-"""
-TODO: Perhaps remove hardcoded limits and let boto3 raise the exception
-Trade-off: Fast vs slow response
-"""
 import copy
 import typing as t
 from dataclasses import dataclass
@@ -144,11 +140,35 @@ class SQSConfig(ServiceConfig):
             Providers.AWS.klass.update_sqs_configurations(name=name, configs=config_dict)
 
 
-# @dataclass
-# class AWSConfig(ServiceConfig):
-#     s3_region: str
-#     s3_access_key_id: str
-#     s3_secret_access_key: str
+@dataclass
+class AWSConfig(ServiceConfig):
+    aws_region: str = ""
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+
+    def __repr__(self) -> str:
+        repr = cast_mapping_to_string_with_newlines(
+            service_name="aws_config", mapping=self.__dict__
+        )
+        return repr
+
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        if name == "aws_region":
+            if not isinstance(value, str):
+                raise ValueError("`aws_region` must be a string")
+
+        elif name == "aws_access_key_id":
+            if not isinstance(value, str):
+                raise ValueError("`aws_access_key_id` must be a string")
+
+        elif name == "aws_secret_access_key":
+            if not isinstance(value, str):
+                raise ValueError("`aws_secret_access_key` must be a string")
+
+        else:
+            raise AttributeError()
+
+        super(AWSConfig, self).__setattr__(name, value)
 
 
 @dataclass
@@ -223,6 +243,7 @@ class DuckConfig:
 
     aws_lambda_config = LambdaConfig()
     aws_sqs_config = SQSConfig()
+    aws_config = AWSConfig()
     session_config = SessionConfig()
     duckdb_config = DuckDBConfig()
 
@@ -251,6 +272,7 @@ class DuckConfig:
             [
                 str(cls.aws_lambda_config),
                 str(cls.aws_sqs_config),
+                str(cls.aws_config),
                 str(cls.session_config),
                 str(cls.duckdb_config),
             ]
