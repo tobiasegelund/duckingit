@@ -76,45 +76,69 @@ class Controller:
             ):
                 execution_stage.tasks.remove(step)
 
-    def execute_plan(self, execution_plan: Plan, prefix: str, default_prefix: str):
-        """Executes the execution plan"""
-        completed = set()
-        queue = set(execution_plan.leaves)
-        # TODO: Can this be moved in the loop, so old dependencies are overwritten?
-        dependencies: dict[str, list[str]] = {}
-
-        while queue:
-            stage = queue.pop()
-
-            for deb in stage.dependents:
-                if deb.id not in completed:
-                    queue.add(deb)
-
-            stage_deps = {}
-            for dep in stage.dependencies:
-                if dep.id in dependencies:
-                    stage_deps[dep.id] = dependencies[dep.id]
-
-            stage.create_tasks(dependencies=stage_deps)
-            if self.verbose:
-                print(f"RUNNING STAGE: [{stage}]")
-
-            if stage.id == execution_plan.root.id and prefix != "":
-                default_prefix = prefix
-
-            dependencies[stage.id] = [f"{default_prefix}/{i}.parquet" for i in stage.output]
-            # self.evaluate_execution_stage(execution_stage=stage, prefix=default_prefix)
-
-            execution_time = datetime.datetime.now()
-            if len(stage.tasks) > 0:
-                request_ids = self.provider.invoke(
-                    execution_tasks=stage.tasks, prefix=default_prefix
+    def execute_stage(
+        self,
+        stage: Stage,
+        dag: dict[Stage, t.Set[Stage]],
+        context: dict[str, list[str]],
+        completed: t.Set[Stage],
+        root_id: str,
+        prefix: str,
+        default_prefix: str,
+    ):
+        for dep in dag[stage]:
+            if dep not in completed:
+                self.execute_stage(
+                    stage=dep,
+                    dag=dag,
+                    context=context,
+                    completed=completed,
+                    root_id=root_id,
+                    prefix=prefix,
+                    default_prefix=default_prefix,
                 )
 
-                self.check_status_of_invokations(request_ids=request_ids)
+        stage_deps = {}
+        for dep in stage.dependencies:
+            if dep.id in context:
+                stage_deps[dep.id] = context[dep.id]
 
-            completed.add(stage.id)
-            self.update_cache_metadata(execution_stage=stage, execution_time=execution_time)
+        stage.create_tasks(dependencies=context)
+        if self.verbose:
+            print(f"RUNNING STAGE: [{stage}]")
+
+        if stage.id == root_id and prefix != "":
+            default_prefix = prefix
+
+        context[stage.id] = [f"{default_prefix}/{i}.parquet" for i in stage.output]
+        # self.evaluate_execution_stage(execution_stage=stage, prefix=default_prefix)
+
+        execution_time = datetime.datetime.now()
+        if len(stage.tasks) > 0:
+            request_ids = self.provider.invoke(execution_tasks=stage.tasks, prefix=default_prefix)
+
+            self.check_status_of_invokations(request_ids=request_ids)
+
+        completed.add(stage)
+        self.update_cache_metadata(execution_stage=stage, execution_time=execution_time)
+
+    def execute_plan(self, execution_plan: Plan, prefix: str, default_prefix: str):
+        """Executes the execution plan"""
+        completed: t.Set[Stage] = set()
+        dag = execution_plan.dag
+        context: dict[str, list[str]] = {}
+
+        for stage in dag:
+            if stage not in completed:
+                self.execute_stage(
+                    stage=stage,
+                    dag=dag,
+                    context=context,
+                    completed=completed,
+                    root_id=execution_plan.root.id,
+                    prefix=prefix,
+                    default_prefix=default_prefix,
+                )
 
     def check_status_of_invokations(self, request_ids: dict[str, Task]):
         cnt = 0

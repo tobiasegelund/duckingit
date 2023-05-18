@@ -324,14 +324,6 @@ class Plan:
             self._length = len([node for node, _ in self.dag.items()])
         return self._length
 
-    @property
-    def leaves(self) -> list[Stage]:
-        leaves = []
-        for node in self.dag:
-            if not self.dag[node]:
-                leaves.append(node)
-        return leaves
-
     @classmethod
     def from_query(cls, query: Query):
         root = Stage.from_ast(ast=query.ast)
