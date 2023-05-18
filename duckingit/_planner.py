@@ -126,7 +126,7 @@ class Stage:
                 )
                 stage.replace_child_with_id(child=expression, id=stage.id, alias=expression.alias)
 
-            if isinstance(expression, exp.Union):
+            elif isinstance(expression, exp.Union):
                 raise NotImplementedError("Cannot handle Unions yet")
 
             else:
