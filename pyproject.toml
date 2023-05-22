@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "duckingit"
-version = "0.0.9"
+version = "0.0.10"
 authors = [
   {name="Tobias Egelund", email="egelundtobias@gmail.com" },
 ]
@@ -25,7 +25,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["duckingit"]
+packages = ["*"]
 
 [project.urls]
 "Homepage" = "https://github.com/tobiasegelund/duckingit"

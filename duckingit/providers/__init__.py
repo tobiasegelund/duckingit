@@ -1,6 +1,6 @@
 from enum import Enum
 
-from .aws import AWS
+from duckingit.providers.aws import AWS
 
 
 class Providers(Enum):
