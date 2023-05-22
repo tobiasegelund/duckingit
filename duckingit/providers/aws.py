@@ -1,4 +1,5 @@
 import json
+import os
 import typing as t
 from dataclasses import dataclass
 
@@ -23,40 +24,35 @@ class SQSMessage:
 
 
 class AWS:
-    lambda_client = boto3.client("lambda")
-    sqs_client = boto3.client("sqs")
+    def __init__(self) -> None:
+        from duckingit import DuckConfig
 
-    def warm_up_lambda_function(self) -> None:
-        """Method to avoid cold starts"""
-        from duckingit._config import DuckConfig
+        self.aws_region = ""
+        self.aws_access_key_id = ""
+        self.aws_secret_access_key = ""
 
-        _ = self.lambda_client.invoke(
-            FunctionName=DuckConfig().aws_lambda.FunctionName,
-            Payload=json.dumps({"WARMUP": 1}),
-            InvocationType="RequestResponse",
-        )
+        aws_settings: dict[str, t.Optional[str]] = {}
+        for key in ["aws_region", "aws_access_key_id", "aws_secret_access_key"]:
+            val = getattr(DuckConfig().aws_config, key)
+            if val == "":
+                val = os.getenv(key.upper(), None)
 
-    def invoke(self, execution_tasks: t.Set[Task], prefix: str) -> dict[str, Task]:
-        request_ids = {}
-        for step in execution_tasks:
-            key = f"{prefix}/{step.subquery_hashed}.parquet"
-            request_payload = json.dumps({"query": step.subquery, "key": key})
-            request_id = self._invoke_lambda(request_payload=request_payload)
+            setattr(self, key, val)
 
-            request_ids[request_id] = step
-        return request_ids
+    def duckdb_settings(self) -> str:
+        return f"""
+            SET s3_region='{self.aws_region}';
+            SET s3_access_key_id='{self.aws_access_key_id}';
+            SET s3_secret_access_key='{self.aws_secret_access_key}';
+        """
 
-    def _invoke_lambda(self, request_payload: str):
-        from duckingit._config import DuckConfig
+    @property
+    def lambda_(self):
+        return AWSLambda()
 
-        resp = self.lambda_client.invoke(
-            FunctionName=DuckConfig().aws_lambda.FunctionName,
-            Payload=request_payload,
-            InvocationType="Event",  # RequestResponse
-        )
-        self._validate_response(response=resp)
-
-        return self._collect_field_from_response(response=resp, field="RequestId")
+    @property
+    def sqs(self):
+        return AWSSQS()
 
     def _collect_field_from_response(self, response: dict[str, dict], field: str):
         unwrap = response.get("ResponseMetadata", None)
@@ -81,10 +77,17 @@ class AWS:
         except KeyError:
             raise ConfigurationError(response)
 
-    def update_lambda_configurations(self, configs: dict) -> None:
-        response = self.lambda_client.update_function_configuration(**configs)
 
-        self._validate_response(response=response)
+class AWSSQS(AWS):
+    def __init__(self):
+        super(AWSSQS, self).__init__()
+
+        self.sqs_client = boto3.client(
+            "sqs",
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+            region_name=self.aws_region,
+        )
 
     def update_sqs_configurations(self, name: str, configs: dict) -> None:
         response = self.sqs_client.set_queue_attributes(QueueUrl=name, Attributes=configs)
@@ -138,3 +141,52 @@ class AWS:
 
     def purge_queue(self, name: str) -> None:
         self.sqs_client.purge_queue(QueueUrl=name)
+
+
+class AWSLambda(AWS):
+    def __init__(self):
+        super(AWSLambda, self).__init__()
+
+        self.lambda_client = boto3.client(
+            "lambda",
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+            region_name=self.aws_region,
+        )
+
+    def warm_up_lambda_function(self) -> None:
+        """Method to avoid cold starts"""
+        from duckingit._config import DuckConfig
+
+        _ = self.lambda_client.invoke(
+            FunctionName=DuckConfig().aws_lambda.FunctionName,
+            Payload=json.dumps({"WARMUP": 1}),
+            InvocationType="RequestResponse",
+        )
+
+    def invoke(self, execution_tasks: t.Set[Task], prefix: str) -> dict[str, Task]:
+        request_ids = {}
+        for step in execution_tasks:
+            key = f"{prefix}/{step.subquery_hashed}.parquet"
+            request_payload = json.dumps({"query": step.subquery, "key": key})
+            request_id = self._invoke_lambda(request_payload=request_payload)
+
+            request_ids[request_id] = step
+        return request_ids
+
+    def _invoke_lambda(self, request_payload: str):
+        from duckingit._config import DuckConfig
+
+        resp = self.lambda_client.invoke(
+            FunctionName=DuckConfig().aws_lambda.FunctionName,
+            Payload=request_payload,
+            InvocationType="Event",  # RequestResponse
+        )
+        self._validate_response(response=resp)
+
+        return self._collect_field_from_response(response=resp, field="RequestId")
+
+    def update_lambda_configurations(self, configs: dict) -> None:
+        response = self.lambda_client.update_function_configuration(**configs)
+
+        self._validate_response(response=response)

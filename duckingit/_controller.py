@@ -2,7 +2,7 @@ import datetime
 import typing as t
 
 from duckingit._exceptions import FailedLambdaFunctions
-from duckingit._planner import Plan, Stage, Stages, Task
+from duckingit._planner import Plan, Stage, Task
 from duckingit._utils import scan_source_for_files
 from duckingit.providers import Providers
 
@@ -38,7 +38,7 @@ class Controller:
         self.verbose = getattr(self.session.conf, "session.verbose")
 
     def _set_provider(self):
-        self.provider = Providers.AWS.klass
+        self.provider = Providers.get_or_raise("aws")
 
     def fetch_cache_metadata(self) -> dict[str, datetime.datetime]:
         return self.session.metadata_cached
@@ -115,7 +115,9 @@ class Controller:
 
         execution_time = datetime.datetime.now()
         if len(stage.tasks) > 0:
-            request_ids = self.provider.invoke(execution_tasks=stage.tasks, prefix=default_prefix)
+            request_ids = self.provider.lambda_.invoke(
+                execution_tasks=stage.tasks, prefix=default_prefix
+            )
 
             self.check_status_of_invokations(request_ids=request_ids)
 
@@ -148,7 +150,7 @@ class Controller:
             # Logic to speed up fast queries
             if cnt < len(WAIT_TIME_SUCCESS_QUEUE_SECONDS):
                 wait_time = WAIT_TIME_SUCCESS_QUEUE_SECONDS[cnt]
-            messages = self.provider.poll_messages_from_queue(
+            messages = self.provider.sqs.poll_messages_from_queue(
                 name=self.success_queue, wait_time_seconds=wait_time
             )
 
@@ -160,7 +162,9 @@ class Controller:
                         continue
 
                 entries = list(message.create_entry_payload() for message in messages)
-                self.provider.delete_messages_from_queue(name=self.success_queue, entries=entries)
+                self.provider.sqs.delete_messages_from_queue(
+                    name=self.success_queue, entries=entries
+                )
 
             if self.verbose:
                 print(f"\tTASKS COMPLETED: {total_tasks - len(request_ids)}/{total_tasks}")
@@ -168,13 +172,13 @@ class Controller:
             cnt += 1
 
             if cnt % ITERATIONS_TO_CHECK_FAILED == 0:
-                messages = self.provider.poll_messages_from_queue(
+                messages = self.provider.sqs.poll_messages_from_queue(
                     name=self.failure_queue,
                     wait_time_seconds=WAIT_TIME_FAILURE_QUEUE_SECONDS,
                 )
 
                 if len(messages) > 0:
-                    self.provider.purge_queue(self.failure_queue)  # clean up
+                    self.provider.sqs.purge_queue(self.failure_queue)  # clean up
                     raise FailedLambdaFunctions(f"{messages}")
 
     # def show(self):

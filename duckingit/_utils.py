@@ -101,7 +101,7 @@ def create_conn_with_httpfs_loaded() -> duckdb.DuckDBPyConnection:
 
     conn = duckdb.connect(":memory:")
     conn.execute("LOAD httpfs;")
-    conn.execute(Providers.AWS.credentials)
+    conn.execute(Providers.get_or_raise("aws").duckdb_settings())
 
     return conn
 

@@ -58,11 +58,11 @@ class LambdaConfig(ServiceConfig):
     def update(self):
         config_dict = copy.deepcopy(self.__dict__)
         warm_up = config_dict.pop("WarmUp")
+        provider = Providers.get_or_raise("aws").lambda_
 
-        Providers.AWS.klass.update_lambda_configurations(config_dict)
-
+        provider.update_lambda_configurations(config_dict)
         if warm_up:
-            Providers.AWS.klass.warm_up_lambda_function()
+            provider.lambda_.warm_up_lambda_function()
 
 
 @dataclass
@@ -137,7 +137,9 @@ class SQSConfig(ServiceConfig):
             if k in ("DelaySeconds", "MaximumMessageSize", "MessageRetentionPeriod")
         }
         for name in [self.__dict__["QueueSuccess"], self.__dict__["QueueFailure"]]:
-            Providers.AWS.klass.update_sqs_configurations(name=name, configs=config_dict)
+            Providers.get_or_raise("aws").sqs.update_sqs_configurations(
+                name=name, configs=config_dict
+            )
 
 
 @dataclass
