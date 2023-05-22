@@ -7,6 +7,7 @@ import boto3  # type: ignore
 
 from duckingit._exceptions import ConfigurationError
 from duckingit._planner import Task
+from duckingit.providers.provider import Provider
 
 
 @dataclass
@@ -23,7 +24,7 @@ class SQSMessage:
         return {"Id": self.message_id, "ReceiptHandle": self.receipt_handle}
 
 
-class AWS:
+class AWS(Provider):
     def __init__(self) -> None:
         from duckingit import DuckConfig
 
