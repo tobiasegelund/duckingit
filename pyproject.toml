@@ -24,8 +24,8 @@ dependencies = [
     'pyarrow',
 ]
 
-[tool.setuptools]
-packages = ["*"]
+[tool.setuptools.packages.find]
+include = ["duckingit*"]
 
 [project.urls]
 "Homepage" = "https://github.com/tobiasegelund/duckingit"
