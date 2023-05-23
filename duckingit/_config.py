@@ -29,18 +29,12 @@ class LambdaConfig(ServiceConfig):
 
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "Timeout":
-            lower_limit = 3
-            upper_limit = 900
-            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
-                raise ValueError(
-                    f"`Timeout` must be between {lower_limit} and {upper_limit} seconds"
-                )
+            if not isinstance(value, int):
+                raise ValueError(f"`Timeout` must be between an integer")
 
         elif name == "MemorySize":
-            lower_limit = 128
-            upper_limit = 10240
-            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
-                raise ValueError(f"`MemorySize` must be between {lower_limit} and {upper_limit} MB")
+            if not isinstance(value, int):
+                raise ValueError(f"`MemorySize` must be an integer")
 
         elif name == "WarmUp":
             if not isinstance(value, bool):
@@ -86,36 +80,28 @@ class SQSConfig(ServiceConfig):
 
     def __setattr__(self, name: str, value: t.Any) -> None:
         if name == "MaxNumberOfMessages":
-            if not ((value <= 10) and isinstance(value, int)):
-                raise ValueError("`MaxNumberOfMessages` must be between 1 and 10 seconds")
+            if not isinstance(value, int):
+                raise ValueError("`MaxNumberOfMessages` must be an integer")
 
         elif name == "VisibilityTimeout":
-            if not ((value <= 60) and isinstance(value, int)):
-                raise ValueError("`VisibilityTimeout` must be between 0 and 60 seconds")
+            if not isinstance(value, int):
+                raise ValueError("`VisibilityTimeout` must be an integer")
 
         elif name == "WaitTimeSeconds":
-            if not ((value <= 60) and isinstance(value, int)):
-                raise ValueError("`WaitTimeSeconds` must be between 0 and 60 seconds")
+            if not isinstance(value, int):
+                raise ValueError("`WaitTimeSeconds` must be an integer")
 
         elif name == "DelaySeconds":
-            if not ((value <= 900) and isinstance(value, int)):
-                raise ValueError("`DelaySeconds` must be between 0 and 900 seconds")
+            if not isinstance(value, int):
+                raise ValueError("`DelaySeconds` must be an integer")
 
         elif name == "MaximumMessageSize":
-            lower_limit = 1024
-            upper_limit = 262_144
-            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
-                raise ValueError(
-                    f"`MaximumMessageSize` must be between {lower_limit} and {upper_limit} KiB"
-                )
+            if not isinstance(value, int):
+                raise ValueError(f"`MaximumMessageSize` must be an integer")
 
         elif name == "MessageRetentionPeriod":
-            lower_limit = 60  # 1 minute
-            upper_limit = 1_209_600  # 14 days
-            if not ((lower_limit <= value <= upper_limit) and isinstance(value, int)):
-                raise ValueError(
-                    f"`MessageRetentionPeriod` must be between {lower_limit} and {upper_limit} seconds"
-                )
+            if not isinstance(value, int):
+                raise ValueError(f"`MessageRetentionPeriod` must be an integer")
 
         elif name == "QueueSuccess":
             if not isinstance(value, str):

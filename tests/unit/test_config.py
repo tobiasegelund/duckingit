@@ -51,8 +51,8 @@ def test_DuckConfig_set(name, old_value, new_value):
     "name, value",
     [
         ("aws_lambda.FunctioName", "DuckExecutor"),
-        ("aws_lambda.MemorySize", 127),
-        ("aws_lambda.Timeout", 1),
+        ("aws_lambda.MemorySize", "ad"),
+        ("aws_lambda.Timeout", "s"),
         ("aws_lambda.WarmUp", 2),
     ],
 )

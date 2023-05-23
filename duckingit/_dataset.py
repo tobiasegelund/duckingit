@@ -112,12 +112,12 @@ class Dataset:
     def _set_controller(self) -> None:
         self._controller = Controller(session=self._session)
 
-    @property
-    def write(self) -> DatasetWriter:
-        return DatasetWriter(session=self._session, dataset=self)
-
-    def drop(self) -> None:
-        raise NotImplementedError()
+    def _execute_plan(self, prefix: str = ""):
+        self._controller.execute_plan(
+            execution_plan=self.execution_plan,
+            prefix=prefix,
+            default_prefix=self.default_prefix,
+        )
 
     @property
     def stored_objects(self) -> list[str]:
@@ -126,12 +126,12 @@ class Dataset:
             for task in self.execution_plan.root.tasks
         )
 
-    def _execute_plan(self, prefix: str = ""):
-        self._controller.execute_plan(
-            execution_plan=self.execution_plan,
-            prefix=prefix,
-            default_prefix=self.default_prefix,
-        )
+    @property
+    def write(self) -> DatasetWriter:
+        return DatasetWriter(session=self._session, dataset=self)
+
+    def drop(self) -> None:
+        raise NotImplementedError()
 
     def show(self) -> duckdb.DuckDBPyRelation:
         self._execute_plan(prefix=self.default_prefix)
