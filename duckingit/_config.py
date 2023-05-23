@@ -228,11 +228,11 @@ class DuckConfig:
     Note the class follows the singleton design pattern
     """
 
-    aws_lambda_config = LambdaConfig()
-    aws_sqs_config = SQSConfig()
+    aws_lambda = LambdaConfig()
+    aws_sqs = SQSConfig()
     aws_config = AWSConfig()
-    session_config = SessionConfig()
-    duckdb_config = DuckDBConfig()
+    session = SessionConfig()
+    duckdb = DuckDBConfig()
 
     def __new__(cls):
         if not hasattr(cls, "instance"):
@@ -257,30 +257,14 @@ class DuckConfig:
     def show_configurations(cls):
         repr = "\n".join(
             [
-                str(cls.aws_lambda_config),
-                str(cls.aws_sqs_config),
+                str(cls.aws_lambda),
+                str(cls.aws_sqs),
                 str(cls.aws_config),
-                str(cls.session_config),
-                str(cls.duckdb_config),
+                str(cls.session),
+                str(cls.duckdb),
             ]
         )
         print(repr)
-
-    @property
-    def aws_lambda(self):
-        return self.aws_lambda_config
-
-    @property
-    def aws_sqs(self):
-        return self.aws_sqs_config
-
-    @property
-    def session(self):
-        return self.session_config
-
-    @property
-    def duckdb(self):
-        return self.duckdb_config
 
     services_to_be_updated: dict[str, t.Any] = {}
 
