@@ -56,19 +56,7 @@ class DatasetWriter:
 
     def __init__(self, session: "DuckSession", dataset: "Dataset") -> None:
         self._session = session
-        self._dataset = dataset
-
-    def _create_tmp_table(self, table_name: str, objects: list[str]) -> None:
-        if self._mode == Modes.OVERWRITE:
-            self._session.conn.sql(f"DROP TABLE IF EXISTS {table_name}")
-
-        self._session.conn.sql(
-            f"""
-            CREATE TEMP TABLE {table_name} AS (
-                SELECT * FROM READ_PARQUET({objects})
-            )
-            """
-        )
+        self.ds = dataset
 
     def mode(self, value: str = "write"):
         self._mode = Modes(value=value.lower())
@@ -100,36 +88,11 @@ class DatasetWriter:
 
         self._mode.command(path)
 
-        self._dataset._execute_plan(prefix=path)
-
-    def save_as_temp_table(self, table_name: str) -> None:
-        """Writes a temporary table to the open DuckDB connection
-
-        Be cautious that it saves a local copy of the data in memory, thus you may run
-        out of memory trying to load in the dataset.
-
-        Args:
-            table_name, str: The name of the table to create.
-
-        Example:
-            >>> dataset = session.sql(query)
-            >>> dataset.write.save_as_temp_table(table_name="test")
-        """
-        assert isinstance(table_name, str), "`table_name` must be of type string"
-        self._dataset._execute_plan()
-
-        self._create_tmp_table(table_name=table_name, objects=self._dataset.stored_objects)
-
-        self._session.metadata[table_name] = self._dataset.execution_plan.query.sql
+        self.ds._execute_plan(prefix=path)
 
 
 class Dataset:
-    """
-    The mapping between data objects in buckets and physical. If cache, then in memory
-    locally.
-
-    Dependency graph of hash values?
-    """
+    """"""
 
     def __init__(
         self,
@@ -174,3 +137,54 @@ class Dataset:
         self._execute_plan(prefix=self.default_prefix)
 
         return self._session.conn.sql(f"SELECT * FROM READ_PARQUET({self.stored_objects})")
+
+    def createOrReplaceTempTable(self, table_name: str) -> None:
+        """Writes or replaces a temporary table locally
+
+        Be cautious that it saves a local copy of the data in memory, thus you may run
+        out of memory trying to load in the dataset.
+
+        Args:
+            table_name, str: The name of the table to create
+
+        Example:
+            >>> dataset = session.sql(query)
+            >>> dataset.createOrReplaceTempTable(table_name="test")
+        """
+        self._execute_plan()
+
+        self._session.conn.sql(
+            f"""
+            CREATE OR REPLACE TEMP TABLE {table_name}
+            AS
+            SELECT * FROM READ_PARQUET({self.stored_objects})
+            """
+        )
+
+        self._session.metadata[table_name] = self.execution_plan.query.sql
+
+    def createTempTable(self, table_name: str) -> None:
+        """Writes a temporary table locally
+
+        Be cautious that it saves a local copy of the data in memory, thus you may run
+        out of memory trying to load in the dataset.
+
+        Args:
+            table_name, str: The name of the table to create
+
+        Example:
+            >>> dataset = session.sql(query)
+            >>> dataset.saveAsTempTable(table_name="test")
+        """
+        assert isinstance(table_name, str), "`table_name` must be of type string"
+        self._execute_plan()
+
+        self._session.conn.sql(
+            f"""
+            CREATE TEMP TABLE {table_name}
+            AS
+            SELECT * FROM READ_PARQUET({self.stored_objects})
+            """
+        )
+
+        self._session.metadata[table_name] = self.execution_plan.query.sql
