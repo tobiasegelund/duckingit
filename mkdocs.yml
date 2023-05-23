@@ -1,0 +1,7 @@
+site_name: duckingit
+site_url: https://duckingit.io/
+nav:
+    - Home: index.md
+    - About: about.md
+theme:
+  name: material

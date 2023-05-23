@@ -1,4 +1,5 @@
 ![logo](logo.png)
+# Ducking it
 
 A framework to leverage the endless capabilities of serverless computing powered by DuckDB.
 
