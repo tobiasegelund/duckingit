@@ -33,7 +33,7 @@ def test_DuckConfig_set_multiple():
         ("aws_sqs.MessageRetentionPeriod", 900, 1000),
         ("session.cache_expiration_time", 15, 14),
         ("session.max_invokations", "auto", 15),
-        ("session.provider", Providers.AWS, Providers.AWS),
+        ("session.provider", "aws", "aws"),
         ("session.verbose", False, True),
         ("duckdb.database", ":memory:", ":memory:"),
         ("duckdb.read_only", False, False),

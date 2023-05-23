@@ -9,13 +9,13 @@ from duckingit.providers import Providers
 CACHE_PREFIX = ".cache/duckingit"
 
 
-class ServiceConfig:
+class BaseConfig:
     def update(self) -> None:
         """Update the state of the ConfigSingleton"""
 
 
 @dataclass
-class LambdaConfig(ServiceConfig):
+class LambdaConfig(BaseConfig):
     FunctionName: str = "DuckExecutor"
     MemorySize: int = 128
     Timeout: int = 30
@@ -60,7 +60,7 @@ class LambdaConfig(ServiceConfig):
 
 
 @dataclass
-class SQSConfig(ServiceConfig):
+class SQSConfig(BaseConfig):
     QueueSuccess: str = "DuckSuccess"
     QueueFailure: str = "DuckFailure"
 
@@ -129,7 +129,7 @@ class SQSConfig(ServiceConfig):
 
 
 @dataclass
-class AWSConfig(ServiceConfig):
+class AWSConfig(BaseConfig):
     aws_region: str = ""
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
@@ -160,10 +160,10 @@ class AWSConfig(ServiceConfig):
 
 
 @dataclass
-class SessionConfig(ServiceConfig):
+class SessionConfig(BaseConfig):
     cache_expiration_time: int = 15
     max_invokations: int | str = "auto"
-    provider: Providers = Providers.AWS
+    provider: str = "aws"
     verbose: bool = False
 
     def __repr__(self) -> str:
@@ -183,11 +183,10 @@ class SessionConfig(ServiceConfig):
                 raise ValueError("`max invokations` must be an integer")
 
         elif name == "provider":
-            if not (isinstance(value, str) or isinstance(value, Providers)):
+            if not isinstance(value, str):
                 raise ValueError("`provider` must be a string")
 
-            if isinstance(value, str):
-                value = Providers(value.lower())
+            value = Providers(value.lower()).value
 
         elif name == "verbose":
             if not (isinstance(value, bool)):
@@ -200,7 +199,7 @@ class SessionConfig(ServiceConfig):
 
 
 @dataclass
-class DuckDBConfig(ServiceConfig):
+class DuckDBConfig(BaseConfig):
     database: str = ":memory:"
     read_only: bool = False
 

@@ -32,7 +32,6 @@ class AWS(Provider):
         self.aws_access_key_id = ""
         self.aws_secret_access_key = ""
 
-        aws_settings: dict[str, t.Optional[str]] = {}
         for key in ["aws_region", "aws_access_key_id", "aws_secret_access_key"]:
             val = getattr(DuckConfig().aws_config, key)
             if val == "":

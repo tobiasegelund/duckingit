@@ -73,7 +73,7 @@ class DuckSession:
         self._conn.execute("INSTALL httpfs; LOAD httpfs;")
 
     def _set_credentials(self) -> None:
-        self._conn.execute(Providers.get_or_raise("aws").duckdb_settings())
+        self._conn.execute(Providers.get_or_raise(self.conf.session.provider).duckdb_settings())
 
     def sql(self, query: str) -> Dataset:
         """Creates a Dataset to execute against DuckDB instances
