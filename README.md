@@ -1,4 +1,4 @@
-![logo](logo.png)
+![logo](docs/assets/logo.png)
 
 A framework to leverage the endless capabilities of serverless computing powered by DuckDB.
 

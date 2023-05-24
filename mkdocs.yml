@@ -1,7 +1,49 @@
 site_name: duckingit
 site_url: https://duckingit.io/
+repo_name: tobiasegelund/duckingit
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: images/favicon.png
+
+  icon:
+    repo: fontawesome/brands/git-alt
+
+  features:
+    - navigation.instant
+    - navigation.tabs
+    # - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    # - navigation.footer
+    - navigation.expand
+    - navigation.indexes
+    - toc.integrate
+    - content.action.edit
+    - content.action.view
+
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tobiasegelund
+
+
 nav:
     - Home: index.md
     - About: about.md
-theme:
-  name: material
