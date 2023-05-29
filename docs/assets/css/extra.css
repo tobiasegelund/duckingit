@@ -1,0 +1,16 @@
+:root {
+  /* Primary color shades */
+  --md-primary-fg-color: #fff;
+  --md-primary-bg-color: #ffffffde;
+  --md-typeset-a-color: #000;
+}
+
+:root>* {
+  /* Footer */
+  --md-footer-bg-color: #575757;
+  --md-footer-fg-color: rgb(6, 6, 6);
+}
+
+/* h2 {
+  color: red;
+} */
