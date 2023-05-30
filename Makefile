@@ -37,16 +37,16 @@ enter-image:
 		duckdb
 
 tf-init:
-	cd infrastructure && terraform init
+	cd infrastructure/aws && terraform init
 
 tf-plan:
-	cd infrastructure && terraform plan
+	cd infrastructure/aws && terraform plan
 
 tf-apply:
-	cd infrastructure && terraform apply -auto-approve
+	cd infrastructure/aws && terraform apply -auto-approve
 
 tf-destroy:
-	cd infrastructure && terraform apply -auto-approve
+	cd infrastructure/aws && terraform apply -auto-approve
 
 build-package:
 	python3 -m build
